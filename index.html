@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Zero One Education — IELTS Assessment</title>
+<style>
+  :root {
+    --navy: #0B123C; --blue: #3372B9; --red: #ED1B24;
+    --bg: #f3f5f9; --panel: #ffffff; --border: #dfe4ec; --text: #17203a; --dim: #66708a;
+    --good: #18935f; --good-bg: #e6f6ee; --warn: #c27709; --warn-bg: #fdf3e2; --bad: #d6343b; --bad-bg: #fdecec;
+    --radius: 12px; --shadow: 0 1px 2px rgba(11,18,60,.05), 0 6px 18px rgba(11,18,60,.07);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  header.top { background: var(--navy); color: #fff; padding: 12px 16px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 20; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: .02em; }
+  .brand .mark { width: 32px; height: 32px; border-radius: 8px; background: #fff; color: var(--navy); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 900; white-space: nowrap; letter-spacing: -.02em; }
+  .brand .mark span { color: var(--red); }
+  .brand small { display: block; font-weight: 500; font-size: 11.5px; opacity: .75; letter-spacing: 0; }
+  .top .spacer { flex: 1; }
+  .timer { background: rgba(255,255,255,.12); border-radius: 999px; padding: 5px 12px; font-weight: 700; font-variant-numeric: tabular-nums; display: none; }
+  .timer.low { background: var(--red); }
+  .save-state { font-size: 12px; opacity: .8; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 80px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px; }
+  .card + .card { margin-top: 16px; }
+  h1 { font-size: 24px; margin: 0 0 6px; color: var(--navy); }
+  h2 { font-size: 19px; margin: 0 0 8px; color: var(--navy); }
+  h3 { font-size: 16px; margin: 0 0 6px; }
+  .dim { color: var(--dim); }
+  .btn { appearance: none; border: none; border-radius: 9px; padding: 11px 18px; font-weight: 700; font-size: 14.5px; cursor: pointer; background: var(--blue); color: #fff; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn.ghost { background: transparent; color: var(--blue); border: 1px solid var(--border); }
+  .btn.red { background: var(--red); }
+  .btn.green { background: var(--good); }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .steps { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 16px; }
+  .steps span { font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: #e6eaf2; color: var(--dim); }
+  .steps span.on { background: var(--navy); color: #fff; }
+  .steps span.done { background: var(--good-bg); color: var(--good); }
+  ul.tips { margin: 8px 0 0; padding-left: 20px; }
+  ul.tips li { margin: 4px 0; }
+  .notice { border-radius: 10px; padding: 12px 14px; font-size: 14px; margin: 12px 0; }
+  .notice.info { background: #eaf1fb; color: #1f4f8a; }
+  .notice.warn { background: var(--warn-bg); color: #8a5300; }
+  .notice.bad { background: var(--bad-bg); color: #9b1c22; }
+  .notice.good { background: var(--good-bg); color: #0f6b44; }
+  .q { padding: 12px 0; border-top: 1px solid var(--border); }
+  .q:first-child { border-top: none; }
+  .q .qn { display: inline-block; min-width: 30px; font-weight: 800; color: var(--blue); }
+  .q input[type=text] { margin-top: 6px; width: 100%; max-width: 360px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; font-size: 15px; }
+  .q input[type=text]:focus, textarea:focus { outline: 2px solid rgba(51,114,185,.35); border-color: var(--blue); }
+  .opts { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .opts.inline { flex-direction: row; flex-wrap: wrap; }
+  .opts label { display: flex; align-items: flex-start; gap: 8px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; background: #fbfcfe; }
+  .opts label:has(input:checked) { border-color: var(--blue); background: #eaf1fb; }
+  .opts input { margin-top: 4px; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .passage { max-height: 72vh; overflow: auto; position: sticky; top: 72px; }
+  .passage p { margin: 0 0 12px; }
+  textarea { width: 100%; min-height: 300px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; font: 15px/1.6 inherit; resize: vertical; }
+  .wc { font-size: 13px; color: var(--dim); margin-top: 6px; }
+  .wc.ok { color: var(--good); }
+  .prompt-box { white-space: pre-wrap; background: #f7f9fc; border-left: 4px solid var(--blue); padding: 12px 14px; border-radius: 8px; }
+  .speak { border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-top: 12px; }
+  .speak .ptext { white-space: pre-wrap; font-weight: 600; }
+  .recbar { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .recdot { width: 11px; height: 11px; border-radius: 50%; background: var(--red); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  .pill { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+  .pill.ok { background: var(--good-bg); color: var(--good); }
+  .pill.wait { background: var(--warn-bg); color: var(--warn); }
+  .chart { width: 100%; max-width: 620px; display: block; margin: 12px 0; }
+  .navbar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--panel); border-top: 1px solid var(--border); padding: 10px 16px; display: none; z-index: 20; }
+  .navbar .inner { max-width: 1100px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .center { text-align: center; }
+  .big-ico { font-size: 44px; line-height: 1; margin-bottom: 8px; }
+  @media (max-width: 800px) {
+    .split { grid-template-columns: 1fr; }
+    .passage { position: static; max-height: none; }
+    h1 { font-size: 21px; }
+    .card { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><div class="mark">Z<span>1</span></div><div>Zero One Education<small>IELTS Assessment</small></div></div>
+  <div class="spacer"></div>
+  <span class="save-state" id="saveState"></span>
+  <span class="timer" id="timer"></span>
+</header>
+<main id="main"><div class="card center"><p class="dim">Loading your assessment…</p></div></main>
+<div class="navbar" id="navbar"><div class="inner"><span class="dim" id="navInfo"></span><button class="btn" id="nextBtn">Next section →</button></div></div>
+
+<script>
+(function () {
+  "use strict";
+  var SB_URL = "https://czxaxqzrxxwzuljkqero.supabase.co";
+  var SB_KEY = "sb_publishable_LgKeSxBXzbrBhn2qBJVQzg_XVJjKl_t";
+  var OFFICE = "Zero One Education, Chowk Shaheedan, Mirpur (AJK)";
+  var params = new URLSearchParams(location.search);
+  var token = (params.get("t") || "").trim();
+  var main = document.getElementById("main");
+  var S = { data: null, answers: {}, transcripts: {}, audioDone: {}, secIndex: -1, plays: {}, timerEnd: 0, timerId: null, saveTimer: null, submitted: false };
+  var LS_KEY = "zero1-ielts-" + token;
+
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function rpc(name, body) {
+    return fetch(SB_URL + "/rest/v1/rpc/" + name, {
+      method: "POST",
+      headers: { "content-type": "application/json", "apikey": SB_KEY },
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      return r.json().catch(function () { return null; }).then(function (j) {
+        if (!r.ok) throw new Error((j && (j.message || j.hint)) || ("HTTP " + r.status));
+        return j;
+      });
+    });
+  }
+  function setSave(text) { document.getElementById("saveState").textContent = text || ""; }
+
+  // ---------- screens ----------
+  function screenMessage(icon, title, body) {
+    document.getElementById("navbar").style.display = "none";
+    document.getElementById("timer").style.display = "none";
+    main.innerHTML = '<div class="card center"><div class="big-ico">' + icon + '</div><h1>' + esc(title) + '</h1><p class="dim">' + body + '</p></div>';
+  }
+  function showError(code, name) {
+    var msgs = {
+      not_found: ["🔗", "This link isn't valid", "Please check you opened the full link we sent you, or ask " + esc(OFFICE) + " for a new one."],
+      expired: ["⌛", "This link has expired", "Assessment links are valid for a limited time. Please contact " + esc(OFFICE) + " for a new link."],
+      cancelled: ["🚫", "This assessment was cancelled", "Please contact " + esc(OFFICE) + " if you think this is a mistake."],
+      submitted: ["✅", "Already submitted", (name ? esc(name) + ", your" : "Your") + " answers have been received. Your trainer will share your results with you soon."]
+    };
+    var m = msgs[code] || ["⚠️", "Something went wrong", "Please refresh the page. If it keeps happening, contact " + esc(OFFICE) + "."];
+    screenMessage(m[0], m[1], m[2]);
+  }
+
+  function sections() { return S.data.test.content.sections || []; }
+  function isA1() { return S.data.test.kind === "life_skills_a1"; }
+
+  function welcome() {
+    var secs = sections();
+    var total = secs.reduce(function (n, s) { return n + (s.minutes || 0); }, 0);
+    var hasSpeaking = secs.some(function (s) { return s.type === "speaking"; });
+    var hasListening = secs.some(function (s) { return s.type === "listening"; });
+    main.innerHTML =
+      '<div class="card"><p class="dim" style="margin:0 0 4px">Welcome, ' + esc(S.data.student_name) + '</p>' +
+      '<h1>' + esc(S.data.test.title) + '</h1><p class="dim">' + esc(S.data.test.description || "") + '</p>' +
+      '<div class="steps">' + secs.map(function (s) { return '<span>' + esc(s.title) + ' · ' + (s.minutes || "") + ' min</span>'; }).join("") + '</div>' +
+      '<h3>Before you start</h3><ul class="tips">' +
+        '<li>Allow about <b>' + total + ' minutes</b> in one sitting, in a quiet place.</li>' +
+        '<li>Use <b>Google Chrome</b> on a laptop or computer if possible.</li>' +
+        (hasListening ? '<li>Use <b>headphones</b> and turn your volume up for the listening section.</li>' : '') +
+        (hasSpeaking ? '<li>You will record your voice. When the browser asks, click <b>Allow</b> for the microphone.</li>' : '') +
+        '<li>Your answers save automatically. If the page closes, open the same link again to continue.</li>' +
+        '<li>Each section has a timer. When it reaches zero you will move to the next section.</li>' +
+      '</ul>' +
+      (hasSpeaking ? '<div class="notice info" id="micCheck">Test your microphone now: <button class="btn ghost" id="micBtn" style="margin-left:8px;padding:6px 12px">Check microphone</button></div>' : '') +
+      (hasListening ? '<div class="notice info">Test your sound: <button class="btn ghost" id="sndBtn" style="margin-left:8px;padding:6px 12px">Play a test sentence</button></div>' : '') +
+      '<div class="row" style="margin-top:16px"><button class="btn" id="startBtn">Start the assessment</button></div></div>';
+    var mic = document.getElementById("micBtn");
+    if (mic) mic.onclick = function () {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function (st) {
+        st.getTracks().forEach(function (t) { t.stop(); });
+        document.getElementById("micCheck").className = "notice good";
+        document.getElementById("micCheck").textContent = "✓ Microphone is working.";
+      }).catch(function () {
+        document.getElementById("micCheck").className = "notice bad";
+        document.getElementById("micCheck").textContent = "Microphone blocked or not found. Click the lock icon in the address bar, allow the microphone, then refresh.";
+      });
+    };
+    var snd = document.getElementById("sndBtn");
+    if (snd) snd.onclick = function () { speakLines([["F", "Hello. If you can hear this clearly, your sound is working."]], function () {}); };
+    document.getElementById("startBtn").onclick = function () {
+      var first = 0;
+      try { var saved = JSON.parse(localStorage.getItem(LS_KEY) || "{}"); if (saved.secIndex > 0) first = saved.secIndex; } catch (e) {}
+      goSection(first);
+    };
+  }
+
+  // ---------- persistence ----------
+  function persist() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ answers: S.answers, transcripts: S.transcripts, secIndex: S.secIndex, plays: S.plays, timerEnd: S.timerEnd })); } catch (e) {}
+    clearTimeout(S.saveTimer);
+    setSave("Saving…");
+    S.saveTimer = setTimeout(function () {
+      rpc("ielts_public_save", { p_token: token, p_answers: S.answers, p_transcripts: S.transcripts })
+        .then(function (r) { setSave(r && r.ok ? "Saved ✓" : ""); })
+        .catch(function () { setSave("Offline — saved on this device"); });
+    }, 1500);
+  }
+  function setAnswer(id, val) { S.answers[id] = val; persist(); }
+
+  // ---------- timer ----------
+  function startTimer(minutes, restore) {
+    clearInterval(S.timerId);
+    var el = document.getElementById("timer");
+    if (!minutes) { el.style.display = "none"; return; }
+    S.timerEnd = restore && S.timerEnd > Date.now() ? S.timerEnd : Date.now() + minutes * 60000;
+    el.style.display = "inline-block";
+    function tick() {
+      var left = Math.max(0, S.timerEnd - Date.now());
+      var m = Math.floor(left / 60000), s = Math.floor(left / 1000) % 60;
+      el.textContent = "⏱ " + m + ":" + (s < 10 ? "0" : "") + s;
+      el.classList.toggle("low", left < 120000);
+      if (left <= 0) {
+        clearInterval(S.timerId);
+        alertTimeUp();
+      }
+    }
+    tick(); S.timerId = setInterval(tick, 1000);
+  }
+  function alertTimeUp() {
+    stopRecordingIfAny();
+    stopSpeaking();
+    var last = S.secIndex >= sections().length - 1;
+    var box = document.createElement("div");
+    box.className = "notice warn";
+    box.textContent = "Time is up for this section. " + (last ? "Submitting your answers…" : "Moving to the next section…");
+    main.insertBefore(box, main.firstChild);
+    window.scrollTo(0, 0);
+    setTimeout(function () { if (last) submitAll(); else goSection(S.secIndex + 1); }, 2500);
+  }
+
+  // ---------- section rendering ----------
+  function goSection(i) {
+    stopRecordingIfAny();
+    stopSpeaking();
+    var restore = i === S.secIndex || (S.secIndex === -1 && S.timerEnd > Date.now());
+    S.secIndex = i;
+    var secs = sections(), sec = secs[i];
+    var steps = '<div class="steps">' + secs.map(function (s, j) { return '<span class="' + (j < i ? "done" : j === i ? "on" : "") + '">' + (j < i ? "✓ " : "") + esc(s.title) + '</span>'; }).join("") + '</div>';
+    var html = steps + '<div class="card"><h1>' + esc(sec.title) + '</h1>' + (sec.intro ? '<p class="dim">' + esc(sec.intro) + '</p>' : "") + '</div>';
+    if (sec.type === "listening") html += renderListening(sec);
+    else if (sec.type === "reading") html += renderReading(sec);
+    else if (sec.type === "writing") html += renderWriting(sec);
+    else if (sec.type === "speaking") html += renderSpeaking(sec);
+    main.innerHTML = html;
+    bindInputs();
+    bindSection(sec);
+    var nav = document.getElementById("navbar");
+    nav.style.display = "block";
+    var last = i === secs.length - 1;
+    var nb = document.getElementById("nextBtn");
+    nb.textContent = last ? "Finish & submit" : "Next section →";
+    nb.className = last ? "btn green" : "btn";
+    nb.onclick = function () {
+      var msg = last ? "Submit your assessment now? You can't change your answers after this." : "Go to the next section? You can't come back to this section.";
+      if (sec.type === "speaking" && hasUnrecorded(sec)) msg = "Some questions have no recording yet. " + msg;
+      if (!confirm(msg)) return;
+      if (last) submitAll(); else goSection(i + 1);
+    };
+    document.getElementById("navInfo").textContent = "Section " + (i + 1) + " of " + secs.length;
+    startTimer(sec.minutes, restore);
+    persist();
+    window.scrollTo(0, 0);
+  }
+
+  function qHTML(q, n) {
+    var v = S.answers[q.id] || "";
+    var head = '<div><span class="qn">' + esc(n) + '</span>' + esc(q.prompt) + '</div>';
+    if (q.type === "gap") return '<div class="q">' + head + '<input type="text" autocomplete="off" spellcheck="false" data-ans="' + q.id + '" value="' + esc(v) + '"></div>';
+    var inline = q.type === "tfng";
+    var opts = (q.options || []).map(function (o) {
+      var val = q.type === "mcq" ? o.trim().charAt(0) : o;
+      return '<label><input type="radio" name="' + q.id + '" value="' + esc(val) + '" data-ans="' + q.id + '"' + (v === val ? " checked" : "") + '><span>' + esc(o) + '</span></label>';
+    }).join("");
+    return '<div class="q">' + head + '<div class="opts' + (inline ? " inline" : "") + '">' + opts + '</div></div>';
+  }
+  function qNum(q) { return q.id.replace(/^[A-Z]+/, ""); }
+
+  function renderListening(sec) {
+    return sec.parts.map(function (p) {
+      var maxPlays = p.plays || 1, used = S.plays[p.id] || 0;
+      return '<div class="card"><h2>' + esc(p.title) + '</h2><p class="dim">' + esc(p.instructions || "") + '</p>' +
+        '<div class="row"><button class="btn" data-play="' + p.id + '"' + (used >= maxPlays ? " disabled" : "") + '>▶ Play recording</button>' +
+        '<span class="dim" id="pl-' + p.id + '">' + (maxPlays - used) + ' play' + (maxPlays - used === 1 ? "" : "s") + ' left</span></div>' +
+        '<div style="margin-top:10px">' + p.questions.map(function (q) { return qHTML(q, qNum(q)); }).join("") + '</div></div>';
+    }).join("");
+  }
+  function renderReading(sec) {
+    return sec.parts.map(function (p) {
+      return '<div class="card"><div class="split"><div class="passage"><h2>' + esc(p.title) + '</h2>' +
+        p.passage.map(function (para) { return '<p>' + esc(para) + '</p>'; }).join("") + '</div>' +
+        '<div><p class="dim">' + esc(p.instructions || "") + '</p>' + p.questions.map(function (q) { return qHTML(q, qNum(q)); }).join("") + '</div></div></div>';
+    }).join("");
+  }
+  function chartSVG(c) {
+    var W = 620, H = 300, padL = 40, padB = 40, padT = 30;
+    var max = 0; c.series.forEach(function (s) { s.values.forEach(function (v) { if (v > max) max = v; }); });
+    max = Math.ceil(max / 10) * 10 || 10;
+    var colors = ["#9db8dc", "#3372B9", "#0B123C"];
+    var gw = (W - padL - 10) / c.groups.length, bw = Math.min(26, (gw - 16) / c.series.length);
+    var out = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(c.title) + '">';
+    out += '<text x="' + (W / 2) + '" y="18" text-anchor="middle" font-size="14" font-weight="700" fill="#17203a">' + esc(c.title) + '</text>';
+    for (var y = 0; y <= max; y += 10) {
+      var yy = H - padB - (y / max) * (H - padB - padT);
+      out += '<line x1="' + padL + '" x2="' + (W - 10) + '" y1="' + yy + '" y2="' + yy + '" stroke="#e3e7ef"/>' +
+        '<text x="' + (padL - 6) + '" y="' + (yy + 4) + '" text-anchor="end" font-size="11" fill="#66708a">' + y + '</text>';
+    }
+    c.groups.forEach(function (g, gi) {
+      var x0 = padL + gi * gw + (gw - bw * c.series.length) / 2;
+      c.series.forEach(function (s, si) {
+        var v = s.values[gi], h = (v / max) * (H - padB - padT);
+        out += '<rect x="' + (x0 + si * bw) + '" y="' + (H - padB - h) + '" width="' + (bw - 3) + '" height="' + h + '" fill="' + colors[si % colors.length] + '"><title>' + esc(s.name + ": " + v + c.unit) + '</title></rect>';
+        out += '<text x="' + (x0 + si * bw + (bw - 3) / 2) + '" y="' + (H - padB - h - 4) + '" text-anchor="middle" font-size="10" fill="#17203a">' + v + '</text>';
+      });
+      out += '<text x="' + (padL + gi * gw + gw / 2) + '" y="' + (H - padB + 16) + '" text-anchor="middle" font-size="12" fill="#17203a">' + esc(g) + '</text>';
+    });
+    var lx = padL;
+    c.series.forEach(function (s, si) {
+      out += '<rect x="' + lx + '" y="' + (H - 14) + '" width="11" height="11" fill="' + colors[si % colors.length] + '"/><text x="' + (lx + 16) + '" y="' + (H - 5) + '" font-size="11" fill="#17203a">' + esc(s.name) + '</text>';
+      lx += 70;
+    });
+    return out + '</svg>';
+  }
+  function words(t) { return (t || "").trim().split(/\s+/).filter(Boolean).length; }
+  function renderWriting(sec) {
+    return sec.tasks.map(function (t) {
+      var v = S.answers[t.id] || "";
+      return '<div class="card"><h2>' + esc(t.title) + '</h2><div class="prompt-box">' + esc(t.prompt) + '</div>' +
+        (t.chart ? chartSVG(t.chart) : "") +
+        '<textarea data-ans="' + t.id + '" data-min="' + t.minWords + '" spellcheck="false" placeholder="Write your answer here…">' + esc(v) + '</textarea>' +
+        '<div class="wc" id="wc-' + t.id + '"></div></div>';
+    }).join("");
+  }
+  function renderSpeaking(sec) {
+    return sec.parts.map(function (p) {
+      return '<div class="card"><h2>' + esc(p.title) + '</h2>' +
+        (p.prepSeconds ? '<p class="dim">You have ' + p.prepSeconds + ' seconds to prepare. Press "Start preparation", make notes if you like, then recording starts automatically.</p>' : "") +
+        p.prompts.map(function (pr) {
+          var done = S.audioDone[pr.id];
+          return '<div class="speak" id="sp-' + pr.id + '"><div class="ptext">' + esc(pr.text) + '</div>' +
+            '<div class="recbar"><button class="btn" data-rec="' + pr.id + '" data-sec="' + pr.seconds + '"' + (p.prepSeconds ? ' data-prep="' + p.prepSeconds + '"' : "") + '>' +
+            (done ? "🎙 Record again" : (p.prepSeconds ? "⏳ Start preparation" : "🎙 Record answer")) + '</button>' +
+            '<span class="dim">Up to ' + Math.round(pr.seconds / 60 * 10) / 10 + ' min</span>' +
+            '<span id="st-' + pr.id + '">' + (done ? '<span class="pill ok">Saved ✓</span>' : "") + '</span></div></div>';
+        }).join("") + '</div>';
+    }).join("");
+  }
+  function hasUnrecorded(sec) {
+    return sec.parts.some(function (p) { return p.prompts.some(function (pr) { return !S.audioDone[pr.id]; }); });
+  }
+
+  function bindInputs() {
+    main.querySelectorAll("input[data-ans][type=text]").forEach(function (el) {
+      el.addEventListener("input", function () { setAnswer(el.dataset.ans, el.value); });
+    });
+    main.querySelectorAll("input[data-ans][type=radio]").forEach(function (el) {
+      el.addEventListener("change", function () { if (el.checked) setAnswer(el.dataset.ans, el.value); });
+    });
+    main.querySelectorAll("textarea[data-ans]").forEach(function (el) {
+      var upd = function () {
+        var n = words(el.value), min = +el.dataset.min, wc = document.getElementById("wc-" + el.dataset.ans);
+        wc.textContent = n + " words" + (n < min ? " (at least " + min + " needed)" : " ✓");
+        wc.className = "wc" + (n >= min ? " ok" : "");
+      };
+      upd();
+      el.addEventListener("input", function () { setAnswer(el.dataset.ans, el.value); upd(); });
+      el.addEventListener("paste", function (e) { e.preventDefault(); });
+    });
+  }
+  function bindSection(sec) {
+    main.querySelectorAll("[data-play]").forEach(function (b) {
+      b.onclick = function () {
+        var part = sec.parts.find(function (p) { return p.id === b.dataset.play; });
+        var max = part.plays || 1;
+        if ((S.plays[part.id] || 0) >= max) return;
+        S.plays[part.id] = (S.plays[part.id] || 0) + 1;
+        persist();
+        main.querySelectorAll("[data-play]").forEach(function (x) { x.disabled = true; });
+        b.textContent = "🔊 Playing…";
+        var lbl = document.getElementById("pl-" + part.id);
+        if (lbl) lbl.textContent = "Listen carefully…";
+        speakLines(part.script, function () {
+          var left = max - S.plays[part.id];
+          b.textContent = "▶ Play recording";
+          main.querySelectorAll("[data-play]").forEach(function (x) {
+            var pp = sec.parts.find(function (p) { return p.id === x.dataset.play; });
+            x.disabled = (S.plays[pp.id] || 0) >= (pp.plays || 1);
+          });
+          var plEl = document.getElementById("pl-" + part.id);
+          if (plEl) plEl.textContent = left + " play" + (left === 1 ? "" : "s") + " left";
+        });
+      };
+    });
+    main.querySelectorAll("[data-rec]").forEach(function (b) {
+      b.onclick = function () { startPromptFlow(b); };
+    });
+  }
+
+  // ---------- listening (spoken by the browser) ----------
+  var voices = [];
+  function loadVoices() { if (window.speechSynthesis) voices = window.speechSynthesis.getVoices() || []; }
+  if (window.speechSynthesis) { loadVoices(); window.speechSynthesis.onvoiceschanged = loadVoices; }
+  function pickVoice(gender) {
+    var gb = voices.filter(function (v) { return /en[-_]GB/i.test(v.lang); });
+    var en = gb.length ? gb : voices.filter(function (v) { return /^en/i.test(v.lang); });
+    var female = /female|woman|libby|sonia|hazel|susan|kate|serena|samantha|zira|aria|jenny|google uk english female/i;
+    var male = /male|man|ryan|george|daniel|thomas|arthur|oliver|david|guy|google uk english male/i;
+    var want = gender === "F" ? female : male;
+    var hit = en.find(function (v) { return want.test(v.name) && !(gender === "M" && /female/i.test(v.name)); });
+    return hit || en[gender === "F" ? 0 : Math.min(1, en.length - 1)] || null;
+  }
+  var speakGen = 0;
+  function stopSpeaking() { speakGen++; if (window.speechSynthesis) window.speechSynthesis.cancel(); }
+  function speakLines(lines, done) {
+    if (!window.speechSynthesis) { alert("Your browser can't play the listening audio. Please use Google Chrome."); done(); return; }
+    stopSpeaking();
+    var gen = speakGen;
+    var i = 0;
+    function next() {
+      if (gen !== speakGen) return; // stopped (e.g. moved to another section)
+      if (i >= lines.length) { done(); return; }
+      var l = lines[i++];
+      var u = new SpeechSynthesisUtterance(l[1]);
+      var v = pickVoice(l[0]);
+      if (v) u.voice = v;
+      u.lang = (v && v.lang) || "en-GB";
+      u.rate = isA1() ? 0.85 : 0.95;
+      u.pitch = l[0] === "F" ? 1.1 : 0.85;
+      u.onend = function () { setTimeout(next, 450); };
+      u.onerror = function () { setTimeout(next, 200); };
+      window.speechSynthesis.speak(u);
+    }
+    next();
+  }
+
+  // ---------- speaking (recording) ----------
+  var rec = null;
+  function stopRecordingIfAny() { if (rec && rec.stop) rec.stop(true); }
+  function startPromptFlow(btn) {
+    if (rec) return;
+    var id = btn.dataset.rec, secs = +btn.dataset.sec, prep = +btn.dataset.prep || 0;
+    var st = document.getElementById("st-" + id);
+    if (prep && !S.audioDone[id]) {
+      btn.disabled = true;
+      var left = prep;
+      st.innerHTML = '<span class="pill wait">Preparing… ' + left + 's</span>';
+      var t = setInterval(function () {
+        left--;
+        st.innerHTML = '<span class="pill wait">Preparing… ' + left + 's</span>';
+        if (left <= 0) { clearInterval(t); btn.disabled = false; record(btn, id, secs); }
+      }, 1000);
+      return;
+    }
+    record(btn, id, secs);
+  }
+  function record(btn, id, secs) {
+    var st = document.getElementById("st-" + id);
+    if (!navigator.mediaDevices || !window.MediaRecorder) { st.innerHTML = '<span class="pill wait">Recording is not supported in this browser — please use Chrome.</span>'; return; }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      var mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : (MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "");
+      var mr = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 32000 } : undefined);
+      var chunks = [], started = Date.now(), cancelled = false, transcript = "";
+      var recog = null;
+      var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SR) {
+        try {
+          recog = new SR(); recog.lang = "en-GB"; recog.continuous = true; recog.interimResults = false;
+          recog.onresult = function (e) { for (var k = e.resultIndex; k < e.results.length; k++) if (e.results[k].isFinal) transcript += e.results[k][0].transcript + " "; };
+          recog.onerror = function () {};
+          recog.start();
+        } catch (e) { recog = null; }
+      }
+      mr.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+      mr.onstop = function () {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        if (recog) try { recog.stop(); } catch (e) {}
+        clearInterval(tick);
+        rec = null;
+        main.querySelectorAll("[data-rec]").forEach(function (x) { x.disabled = false; });
+        btn.textContent = "🎙 Record again";
+        var dur = Math.round((Date.now() - started) / 1000);
+        if (cancelled && dur < 2) { st.innerHTML = ""; return; }
+        var blob = new Blob(chunks, { type: mr.mimeType || "audio/webm" });
+        st.innerHTML = '<span class="pill wait">Uploading…</span>';
+        setTimeout(function () { // give speech recognition a moment to finish
+          if (transcript.trim()) { S.transcripts[id] = transcript.trim(); persist(); }
+          var fr = new FileReader();
+          fr.onload = function () {
+            var b64 = String(fr.result).split(",")[1] || "";
+            rpc("ielts_public_audio", { p_token: token, p_prompt_id: id, p_mime: blob.type, p_b64: b64, p_seconds: dur })
+              .then(function (r) {
+                if (r && r.ok) { S.audioDone[id] = true; st.innerHTML = '<span class="pill ok">Saved ✓ (' + dur + 's)</span>'; }
+                else st.innerHTML = '<span class="pill wait">Couldn\'t save — please record again</span>';
+              })
+              .catch(function () { st.innerHTML = '<span class="pill wait">No internet — please record again when connected</span>'; });
+          };
+          fr.readAsDataURL(blob);
+        }, 600);
+      };
+      rec = { stop: function (isCancel) { cancelled = !!isCancel; if (mr.state !== "inactive") mr.stop(); } };
+      mr.start(1000);
+      main.querySelectorAll("[data-rec]").forEach(function (x) { if (x !== btn) x.disabled = true; });
+      btn.textContent = "■ Stop recording";
+      btn.onclick = function () { if (rec) rec.stop(false); btn.onclick = function () { startPromptFlow(btn); }; };
+      var tick = setInterval(function () {
+        var el = Math.round((Date.now() - started) / 1000), rem = secs - el;
+        st.innerHTML = '<span class="recdot"></span> <b>Recording</b> · ' + Math.max(0, rem) + 's left';
+        if (rem <= 0 && rec) { rec.stop(false); btn.onclick = function () { startPromptFlow(btn); }; }
+      }, 500);
+    }).catch(function () {
+      st.innerHTML = '<span class="pill wait">Microphone blocked — click the lock icon in the address bar, allow the microphone, then try again.</span>';
+    });
+  }
+
+  // ---------- submit ----------
+  function submitAll() {
+    if (S.submitted) return;
+    S.submitted = true;
+    clearInterval(S.timerId);
+    stopRecordingIfAny();
+    screenMessage("⏳", "Submitting…", "Please don't close this page.");
+    var attempt = function (n) {
+      rpc("ielts_public_submit", { p_token: token, p_answers: S.answers, p_transcripts: S.transcripts }).then(function (r) {
+        if (!r || !r.ok) throw new Error((r && r.error) || "failed");
+        try { localStorage.removeItem(LS_KEY); } catch (e) {}
+        screenMessage("🎉", "Thank you, " + S.data.student_name + "!", "Your assessment has been submitted. Your trainer at Zero One Education will review your answers and share your results with you.");
+      }).catch(function () {
+        if (n < 3) { setTimeout(function () { attempt(n + 1); }, 2500); return; }
+        S.submitted = false;
+        main.innerHTML = '<div class="card center"><div class="big-ico">📶</div><h1>Couldn\'t submit yet</h1><p class="dim">Your answers are saved on this device. Check your internet connection and try again.</p><button class="btn" id="retry">Try again</button></div>';
+        document.getElementById("retry").onclick = submitAll;
+      });
+    };
+    attempt(1);
+  }
+
+  // ---------- start ----------
+  if (!token) { showError("not_found"); return; }
+  rpc("ielts_public_test", { p_token: token }).then(function (d) {
+    if (!d || d.error) { showError(d ? d.error : "", d && d.student_name); return; }
+    S.data = d;
+    S.answers = d.answers || {};
+    S.transcripts = d.transcripts || {};
+    (d.audio_done || []).forEach(function (id) { S.audioDone[id] = true; });
+    try {
+      var saved = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+      if (saved.answers) Object.keys(saved.answers).forEach(function (k) { if (!(k in S.answers) || !S.answers[k]) S.answers[k] = saved.answers[k]; });
+      if (saved.transcripts) Object.keys(saved.transcripts).forEach(function (k) { if (!S.transcripts[k]) S.transcripts[k] = saved.transcripts[k]; });
+      if (saved.plays) S.plays = saved.plays;
+      if (saved.timerEnd) S.timerEnd = saved.timerEnd;
+      if (typeof saved.secIndex === "number" && saved.secIndex >= 0) {
+        main.innerHTML = '<div class="card center"><h1>Welcome back, ' + esc(d.student_name) + '</h1><p class="dim">Your answers were saved. Continue where you left off.</p><button class="btn" id="resume">Continue</button></div>';
+        document.getElementById("resume").onclick = function () { goSection(saved.secIndex); };
+        return;
+      }
+    } catch (e) {}
+    welcome();
+  }).catch(function () { showError(""); });
+  window.addEventListener("beforeunload", function (e) { if (S.secIndex >= 0 && !S.submitted) { e.preventDefault(); e.returnValue = ""; } });
+})();
+</script>
+</body>
+</html>
