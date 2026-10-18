@@ -140,7 +140,51 @@
   .essay { white-space: pre-wrap; background: #f7f9fc; border-radius: 8px; padding: 12px; margin-top: 8px; }
   .essay mark { background: #ffe1e1; border-bottom: 2px solid #e05a5a; padding: 0 1px; }
   .cmt { font-size: 13px; background: #fff7e6; border-left: 3px solid #f0a020; padding: 6px 10px; border-radius: 6px; margin-top: 6px; }
+  /* exam-style reading */
+  body.wide main { max-width: 1480px; }
+  .rsplit { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+  .rpass { position: sticky; top: 64px; max-height: calc(100vh - 150px); overflow: auto; padding-right: 8px; }
+  .rpass h2 { font-size: 21px; margin-bottom: 2px; } .rpass .rsub { color: var(--dim); font-style: italic; margin: 0 0 12px; font-size: 14px; }
+  .rpass p { margin: 0 0 13px; line-height: 1.72; font-size: 15.5px; }
+  .rpass p b.pl { color: var(--navy); margin-right: 8px; font-size: 16px; }
+  .rpass mark.hl { background: #fff1a8; border-radius: 2px; cursor: pointer; }
+  .rq { max-height: calc(100vh - 150px); overflow: auto; position: sticky; top: 64px; padding-right: 6px; }
+  .hltip { font-size: 12px; color: var(--dim); margin: -4px 0 10px; }
+  .xq .opts.inline label { padding: 4px 10px; }
+  /* review & explanations */
+  .agrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 28px; margin: 10px 0 4px; }
+  .agrid .ph { grid-column: 1 / -1; font-weight: 800; color: var(--navy); margin: 12px 0 2px; }
+  .arow { display: flex; align-items: center; gap: 8px; font-size: 14px; padding: 4px 0; min-width: 0; }
+  .arow .nb { width: 26px; height: 26px; border-radius: 50%; background: var(--blue); color: #fff; display: grid; place-items: center; font-size: 12px; font-weight: 800; flex: none; }
+  .arow.no .nb { background: #d6343b; } .arow.ok .nb { background: var(--good); }
+  .arow .av { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .arow .ck { color: var(--good); font-weight: 800; } .arow .xx { color: var(--bad); font-weight: 800; }
+  .arow .ky { color: var(--dim); font-size: 13px; }
+  .rvw { margin-top: 18px; border-radius: 14px; overflow: hidden; border: 1px solid #c9d6ea; }
+  .rvw-h { background: #24476e; color: #fff; padding: 12px 18px; font-weight: 800; font-size: 17px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .rvw-h .ptabs2 { display: flex; gap: 4px; margin-left: auto; }
+  .rvw-h .ptabs2 button { border: 1px solid rgba(255,255,255,.35); background: transparent; color: #fff; border-radius: 7px; padding: 4px 10px; font-weight: 700; cursor: pointer; font-size: 12.5px; }
+  .rvw-h .ptabs2 button.on { background: #fff; color: #24476e; }
+  .rvw-b { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); max-height: 72vh; }
+  .rvw-l { overflow: auto; padding: 14px 18px; background: #fff; border-right: 1px solid #dbe3ef; }
+  .rvw-r { position: relative; overflow: auto; padding: 14px 18px; background: #e3f2f7; font-size: 14.5px; line-height: 1.75; }
+  .rvw-r p { margin: 0 0 12px; } .rvw-r .spk { font-weight: 700; color: #24476e; margin-right: 4px; }
+  .ev { background: #f9a35a; border-radius: 3px; padding: 1px 3px; transition: box-shadow .3s; }
+  .ev .tg { background: #e2762a; color: #fff; font-weight: 800; font-size: 11.5px; border-radius: 3px; padding: 0 4px; margin-right: 4px; }
+  .ev.flash { box-shadow: 0 0 0 3px #24476e; }
+  .xc { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin: 8px 0; }
+  .xc.no { border-left: 4px solid #d6343b; } .xc.ok { border-left: 4px solid var(--good); }
+  .xc .xq1 { font-size: 14px; } .xc .xa { font-size: 13.5px; margin-top: 4px; }
+  .xc .xa b.c { color: #c0392b; } .xc .xa b.g { color: var(--good); }
+  .xc .xe { font-size: 13.5px; color: #33405e; background: #f6f8fc; border-radius: 8px; padding: 8px 10px; margin-top: 6px; }
+  .xc .tn { font-size: 13.5px; background: #fff7e6; border-left: 3px solid #f0a020; border-radius: 6px; padding: 6px 10px; margin-top: 6px; }
+  .xc .xbtn { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .xc .xbtn button { border: 1px solid #9fb5d6; background: #fff; color: #24476e; border-radius: 6px; padding: 3px 9px; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .xfilter { display: flex; gap: 6px; margin: 4px 0 6px; } .xfilter button { border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 3px 11px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+  .xfilter button.on { background: var(--navy); color: #fff; border-color: var(--navy); }
   @media (max-width: 800px) {
+    .rsplit { grid-template-columns: 1fr; } .rpass, .rq { position: static; max-height: none; }
+    .rvw-b { grid-template-columns: 1fr; max-height: none; } .rvw-r { max-height: 50vh; } .agrid { grid-template-columns: 1fr; }
     .split { grid-template-columns: 1fr; } .passage { position: static; max-height: none; }
     h1 { font-size: 21px; } .card { padding: 16px; } .qnums { display: none; } .vol { display: none !important; }
   }
@@ -197,8 +241,10 @@
   }
 
   function sections() { return S.data.test.content.sections || []; }
-  function isA1() { return S.data.test.kind !== "academic"; }
+  function isA1() { return !!(S.data && S.data.test && S.data.test.kind !== "academic"); }
   function isExamListening(sec) { return sec && sec.type === "listening" && sec.flow === "exam"; }
+  function isExamReading(sec) { return sec && sec.type === "reading" && sec.flow === "exam"; }
+  function isExamPaged(sec) { return isExamListening(sec) || isExamReading(sec); }
   function secMinutes(s) {
     if (!isExamListening(s)) return s.minutes || 0;
     var steps = buildSteps(s), secs = 0;
@@ -311,6 +357,7 @@
     var steps = '<div class="steps">' + secs.map(function (s, j) { return '<span class="' + (j < i ? "done" : j === i ? "on" : "") + '">' + (j < i ? "✓ " : "") + esc(s.title) + '</span>'; }).join("") + '</div>';
     var html = steps;
     if (isExamListening(sec)) html += renderExamListening(sec);
+    else if (isExamReading(sec)) html += renderExamReading(sec);
     else {
       html += '<div class="card"><h1>' + esc(sec.title) + '</h1>' + (sec.intro ? '<p class="dim">' + esc(sec.intro) + '</p>' : "") + '</div>';
       if (sec.type === "listening") html += renderListening(sec);
@@ -319,8 +366,10 @@
       else if (sec.type === "speaking") html += renderSpeaking(sec);
     }
     main.innerHTML = html;
+    document.body.classList.toggle("wide", isExamReading(sec));
     bindInputs();
     bindSection(sec);
+    if (isExamReading(sec)) bindHighlighter();
     $("navbar").style.display = "block";
     var last = i === secs.length - 1;
     var nb = $("nextBtn");
@@ -379,7 +428,7 @@
   function goQuestion(id) {
     var sec = NAV.sec, pi = 0;
     (sec.parts || []).forEach(function (p, i) { if (p.questions.some(function (q) { return q.id === id; })) pi = i; });
-    if (isExamListening(sec)) showPart(pi); else { NAV.view = pi; refreshNav(); }
+    if (isExamPaged(sec)) showPart(pi); else { NAV.view = pi; refreshNav(); }
     var el = $("q-" + id) || $("q-" + (multiAnchor[id] || ""));
     if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); var f = el.querySelector("input,select"); if (f) setTimeout(function () { f.focus({ preventScroll: true }); }, 300); }
   }
@@ -446,7 +495,50 @@
     }).join("");
     return head + body;
   }
-  function letters(b) { return b.options ? b.options.map(function (o) { return o.trim().split(/\s+/)[0]; }) : b.plan ? b.plan.letters.map(function (x) { return x.l; }) : []; }
+  function paraHTML(t) {
+    var m = String(t).match(/^([A-H])\s{2}([\s\S]*)$/);
+    return '<p>' + (m ? '<b class="pl">' + m[1] + '</b>' + esc(m[2]) : esc(t)) + '</p>';
+  }
+  function renderExamReading(sec) {
+    var head = '<div class="card" style="padding:14px 22px"><div class="row"><b style="color:var(--navy);font-size:17px">' + esc(sec.title) + '</b><span class="dim" style="flex:1;min-width:240px">' + esc(sec.intro || "") + '</span></div></div>';
+    var body = sec.parts.map(function (p, pi) {
+      var qs = p.questions, r0 = qNum(qs[0]), r1 = qNum(qs[qs.length - 1]);
+      var out = '<div class="card xpart' + (pi === 0 ? " on" : "") + '" data-part="' + pi + '"><div class="rsplit"><div class="rpass" data-pass="' + pi + '"><p class="dim" style="margin:0 0 2px;font-weight:700">' + esc(p.title) + '</p><h2>' + esc(p.heading || p.title) + '</h2>' +
+        (p.sub ? '<p class="rsub">' + esc(p.sub) + '</p>' : '') + '<p class="hltip">Tip: select words in the passage to highlight them. Click a highlight to remove it.</p>' + p.passage.map(paraHTML).join("") + '</div><div class="rq"><h2 style="font-size:17px">Questions ' + r0 + '–' + r1 + '</h2>';
+      p.blocks.forEach(function (b) {
+        var rr = b.q.split("-").map(Number);
+        var bq = qs.filter(function (q) { var n = +qNum(q); return n >= rr[0] && n <= rr[1]; });
+        out += '<div class="xblock"><h3>Questions ' + rr[0] + (rr[1] !== rr[0] ? '–' + rr[1] : '') + '</h3><p class="instr">' + boldWords(b.instructions) + '</p>';
+        if (b.title && b.options) out += '<div class="xtitle">' + esc(b.title) + '</div>';
+        if (b.options) out += '<div class="optbox">' + b.options.map(function (o) { return '<div>' + esc(o) + '</div>'; }).join("") + '</div>';
+        if (b.title && !b.options) out += '<div class="xtitle">' + esc(b.title) + '</div>';
+        out += b.layout === "notes" ? '<div class="xform">' : '<div>';
+        var seen = {};
+        bq.forEach(function (q) {
+          if (q.type === "multi") { if (seen[q.group]) return; seen[q.group] = 1; out += multiHTML(q, qs.filter(function (x) { return x.group === q.group; })); return; }
+          out += xqHTML(q, b);
+        });
+        out += '</div></div>';
+      });
+      return out + '</div></div></div>';
+    }).join("");
+    return head + body;
+  }
+  function bindHighlighter() {
+    main.querySelectorAll(".rpass").forEach(function (box) {
+      box.addEventListener("mouseup", function () {
+        var sel = window.getSelection(); if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+        var r = sel.getRangeAt(0); if (!box.contains(r.commonAncestorContainer)) return;
+        try { var m = document.createElement("mark"); m.className = "hl"; r.surroundContents(m); } catch (e) { /* selection crosses paragraphs */ }
+        sel.removeAllRanges();
+      });
+      box.addEventListener("click", function (e) {
+        var m = e.target.closest && e.target.closest("mark.hl"); if (!m) return;
+        var t = document.createTextNode(m.textContent); m.parentNode.replaceChild(t, m); t.parentNode.normalize();
+      });
+    });
+  }
+  function letters(b) { return b.letters ? b.letters : b.options ? b.options.map(function (o) { return o.trim().split(/\s+/)[0]; }) : b.plan ? b.plan.letters.map(function (x) { return x.l; }) : []; }
   function xqHTML(q, b) {
     var v = S.answers[q.id] || "", n = qNum(q);
     if (q.type === "gap") {
@@ -456,6 +548,10 @@
     if (q.type === "match") {
       return '<div class="xq" id="q-' + q.id + '"><span class="qn">' + n + '</span>' + esc(q.prompt) + ' &nbsp; <select data-ans="' + q.id + '" aria-label="Question ' + n + '"><option value="">—</option>' +
         letters(b).map(function (l) { return '<option' + (v === l ? " selected" : "") + '>' + l + '</option>'; }).join("") + '</select>' + flagBtn(q.id) + '</div>';
+    }
+    if (q.type === "tfng") {
+      return '<div class="xq" id="q-' + q.id + '" style="line-height:1.55"><div><span class="qn">' + n + '</span>' + esc(q.prompt) + '</div><div class="opts inline">' +
+        q.options.map(function (o) { return '<label><input type="radio" name="' + q.id + '" value="' + esc(o) + '" data-ans="' + q.id + '"' + (v === o ? " checked" : "") + '><span>' + esc(o) + '</span></label>'; }).join("") + '</div>' + flagBtn(q.id) + '</div>';
     }
     var opts = (q.options || []).map(function (o) {
       var val = o.trim().charAt(0);
@@ -891,8 +987,9 @@
   }
   var BAND_LABEL = { listening: "Listening", reading: "Reading", writing: "Writing", speaking: "Speaking" };
   var CRIT = { TA: "Task achievement", TR: "Task response", CC: "Coherence & cohesion", LR: "Vocabulary", GRA: "Grammar", FC: "Fluency & coherence", P: "Pronunciation" };
+  var RV = [], RCM = [];
   function renderReport(r) {
-    hideChrome();
+    hideChrome(); RV = []; RCM = r.comments || (r.result && r.result.comments) || [];
     var res = r.result || {}, secs = (r.content && r.content.sections) || [], acad = r.kind === "academic";
     var bands = ["listening", "reading", "writing", "speaking"].filter(function (k) { return res[k] != null; });
     var html = '<div class="card"><p class="dim" style="margin:0">Results for ' + esc(r.student_name) + '</p><h1>' + esc(r.title) + '</h1>' +
@@ -903,26 +1000,16 @@
     html += '<p class="dim" style="font-size:13px;margin-bottom:0">This is a practice estimate from Zero One Education, not an official IELTS score.</p></div>';
     secs.forEach(function (sec) {
       if (sec.type === "listening" || sec.type === "reading") {
-        var items = (r.items && r.items[sec.type] && r.items[sec.type].items) || {};
         var sc = r.items && r.items[sec.type];
-        html += '<div class="card"><h2>' + esc(sec.title) + (sc ? ' <span class="dim" style="font-size:15px">· ' + sc.correct + ' / ' + sc.total + ' correct</span>' : '') + '</h2><p class="dim" style="margin-top:0">Every answer, with the correct one and where it came from.</p>';
-        sec.parts.forEach(function (p) {
-          var src = sec.type === "listening" ? (p.segments ? p.segments.map(function (s) { return s.script.map(function (l) { return l[1]; }).join(" "); }).join(" ") : (p.script || []).map(function (l) { return l[1]; }).join(" ")) : (p.passage || []).join(" ");
-          html += '<details class="acc"><summary>' + esc(p.title) + '</summary>';
-          p.questions.forEach(function (q) {
-            var ok = items[q.id] === true, given = (r.answers || {})[q.id] || "—", key = (q.answer || []).join(" / ");
-            var why = q.type === "gap" ? evidence(src, q.answer || []) : "";
-            html += '<div class="rv ' + (ok ? "ok" : "no") + '"><b>' + (ok ? "✓" : "✗") + ' ' + qNum(q) + '.</b> ' + esc(q.prompt) + '<br>Your answer: <b>' + esc(given) + '</b>' + (ok ? "" : ' · Correct: <b>' + esc(key) + '</b>') +
-              (why ? '<div class="why">“' + why + '”</div>' : '') + '</div>';
-          });
-          html += '</details>';
-        });
-        html += '</div>';
+        RV.push({ sec: sec, items: (sc && sc.items) || {} });
+        html += '<div class="card"><h2>' + esc(sec.title) + (sc ? ' <span class="dim" style="font-size:15px">· ' + sc.correct + ' / ' + sc.total + ' correct</span>' : '') + '</h2>' +
+          '<p class="dim" style="margin-top:0">Your answer sheet. Below it, every question is explained — click <b>Locate</b> to see where the answer is' + (sec.type === "listening" ? ', or <b>Listen from here</b> to hear that part again.' : ' in the passage.') + '</p>' +
+          answerSheet(sec, (sc && sc.items) || {}, r.answers || {}) + '<div class="rvw" data-rvw="' + (RV.length - 1) + '"></div></div>';
       }
       if (sec.type === "writing") {
         html += '<div class="card"><h2>' + esc(sec.title) + (res.writing != null ? ' <span class="dim" style="font-size:15px">· band ' + Number(res.writing).toFixed(1) + '</span>' : '') + '</h2>';
         sec.tasks.forEach(function (tk) {
-          var crit = (res.criteria || {})[tk.id] || {}, cm = (res.comments || []).filter(function (c) { return c.task === tk.id; });
+          var crit = (res.criteria || {})[tk.id] || {}, cm = RCM.filter(function (c) { return c.task === tk.id && c.start != null; });
           html += '<details class="acc" open><summary>' + esc(tk.title) + '</summary><details class="acc"><summary>Question</summary><div class="prompt-box" style="margin-top:8px">' + esc(tk.prompt) + '</div>' + (tk.chart ? chartSVG(tk.chart) : '') + '</details>';
           var keys = Object.keys(crit).filter(function (k) { return crit[k] != null; });
           if (keys.length) html += '<div class="row" style="margin-top:10px">' + keys.map(function (k) { return '<span class="pill ok" style="background:#eef3fb;color:#1f4f8a">' + (CRIT[k] || k) + ': ' + Number(crit[k]).toFixed(1) + '</span>'; }).join("") + '</div>';
@@ -937,6 +1024,105 @@
       }
     });
     main.innerHTML = html;
+    RV.forEach(function (x, i) { x.part = 0; x.only = false; x.answers = r.answers || {}; drawReview(i); });
+  }
+  function keyOf(q) { var a = q.answer || []; return q.type === "multi" ? a.join(" & ") : (a[0] || ""); }
+  function answerSheet(sec, items, ans) {
+    var out = '<div class="agrid">';
+    sec.parts.forEach(function (p) {
+      var qs = p.questions;
+      out += '<div class="ph">' + esc(p.title) + ': Questions ' + qNum(qs[0]) + '–' + qNum(qs[qs.length - 1]) + '</div>';
+      qs.forEach(function (q) {
+        var ok = items[q.id] === true, g = ans[q.id];
+        out += '<div class="arow ' + (ok ? "ok" : "no") + '"><span class="nb">' + qNum(q) + '</span><span class="av">' + (g ? esc(g) : '<i class="dim">no answer</i>') + '</span>' +
+          (ok ? '<span class="ck">✓</span>' : '<span class="xx">✗</span><span class="ky">→ ' + esc(keyOf(q)) + '</span>') + '</div>';
+      });
+    });
+    return out + '</div>';
+  }
+  function partLines(sec, p) {
+    if (sec.type === "listening") {
+      var lines = p.segments ? [].concat.apply([], p.segments.map(function (s) { return s.script; })) : (p.script || []);
+      return lines.map(function (l) { return { spk: l[0], t: l[1] }; });
+    }
+    return (p.passage || []).map(function (t) { var m = String(t).match(/^([A-H])\s{2}([\s\S]*)$/); return m ? { spk: m[1], t: m[2], para: true } : { t: t, para: true }; });
+  }
+  function evidenceOf(q, lines) {
+    if (q.evidence) return q.evidence;
+    if (q.type !== "gap") return "";
+    for (var a = 0; a < (q.answer || []).length; a++) {
+      var key = nrm(q.answer[a]); if (!key) continue;
+      for (var i = 0; i < lines.length; i++) {
+        var sent = String(lines[i].t).match(/[^.!?]+[.!?]*/g) || [];
+        for (var j = 0; j < sent.length; j++) if (nrm(sent[j]).indexOf(key) >= 0) return sent[j].trim();
+      }
+    }
+    return "";
+  }
+  function markLine(text, marks) {
+    var hits = [];
+    marks.forEach(function (m) { var at = text.indexOf(m.ev); if (at >= 0) hits.push({ s: at, e: at + m.ev.length, q: [m] }); });
+    hits.sort(function (a, b) { return a.s - b.s || b.e - a.e; });
+    var out = "", pos = 0, last = null;
+    hits.forEach(function (h) {
+      if (last && h.s < last.e) { if (h.s === last.s) last.q = last.q.concat(h.q); return; }
+      last = h;
+    });
+    var keep = []; last = null;
+    hits.forEach(function (h) { if (!last || h.s >= last.e) { keep.push(h); last = h; } });
+    keep.forEach(function (h) {
+      out += esc(text.slice(pos, h.s)) + '<span class="ev" data-ev="' + h.q.map(function (m) { return m.key; }).join(" ") + '">' +
+        h.q.map(function (m) { return '<span class="tg">Q' + m.n + '</span>'; }).join("") + esc(text.slice(h.s, h.e)) + '</span>';
+      pos = h.e;
+    });
+    return out + esc(text.slice(pos));
+  }
+  var SPK = { M: "Man", F: "Woman", M2: "Man 2", F2: "Woman 2", N: "Narrator" };
+  function drawReview(i) {
+    var x = RV[i], sec = x.sec, box = main.querySelector('[data-rvw="' + i + '"]'); if (!box) return;
+    var p = sec.parts[x.part], lines = partLines(sec, p), marks = [];
+    p.questions.forEach(function (q) { var ev = evidenceOf(q, lines); if (ev) marks.push({ key: sec.type + "-" + q.id, n: qNum(q), ev: ev }); });
+    var tabs = sec.parts.map(function (pp, k) { return '<button data-pt="' + k + '" class="' + (k === x.part ? "on" : "") + '">' + esc(pp.title) + '</button>'; }).join("");
+    var cards = p.questions.filter(function (q) { return !x.only || x.items[q.id] !== true; }).map(function (q) {
+      var ok = x.items[q.id] === true, g = x.answers[q.id], key = sec.type + "-" + q.id;
+      var notes = RCM.filter(function (c) { return c.task === q.id; });
+      var hasEv = marks.some(function (m) { return m.key === key; });
+      return '<div class="xc ' + (ok ? "ok" : "no") + '"><div class="xq1"><b>' + qNum(q) + '.</b> ' + esc(q.prompt) + '</div>' +
+        '<div class="xa">Your answer: <b class="' + (ok ? "g" : "c") + '">' + (g ? esc(g) : "—") + '</b> ' + (ok ? "✓" : '· Correct answer: <b class="g">' + esc(keyOf(q)) + '</b>') + '</div>' +
+        (q.explain ? '<div class="xe">💡 ' + esc(q.explain) + '</div>' : '') +
+        notes.map(function (c) { return '<div class="tn"><b>Your trainer:</b> ' + esc(c.note) + '</div>'; }).join("") +
+        (hasEv ? '<div class="xbtn"><button data-loc="' + key + '">📍 Locate</button>' + (sec.type === "listening" ? '<button data-lis="' + key + '">🎧 Listen from here</button>' : '') + '</div>' : '') + '</div>';
+    }).join("") || '<p class="dim">No wrong answers in this part — well done!</p>';
+    var right = lines.map(function (l) {
+      return '<p>' + (l.spk ? '<span class="spk">' + esc(l.para ? l.spk : (SPK[l.spk] || l.spk) + ":") + '</span>' : '') + markLine(l.t, marks) + '</p>';
+    }).join("");
+    box.innerHTML = '<div class="rvw-h">📖 Review &amp; Explanations<div class="ptabs2">' + tabs + '</div></div>' +
+      '<div class="rvw-b"><div class="rvw-l"><div class="xfilter"><button data-only="0" class="' + (!x.only ? "on" : "") + '">All questions</button><button data-only="1" class="' + (x.only ? "on" : "") + '">Wrong answers only</button></div>' + cards + '</div>' +
+      '<div class="rvw-r">' + (sec.type === "reading" ? '<h3 style="color:#24476e">' + esc(p.heading || p.title) + '</h3>' : '<p class="dim" style="margin-top:0"><b>Recording transcript</b></p>') + right + '</div></div>';
+    box.querySelectorAll("[data-pt]").forEach(function (b) { b.onclick = function () { stopSpeaking(); x.part = +b.dataset.pt; drawReview(i); }; });
+    box.querySelectorAll("[data-only]").forEach(function (b) { b.onclick = function () { x.only = b.dataset.only === "1"; drawReview(i); }; });
+    box.querySelectorAll("[data-loc]").forEach(function (b) { b.onclick = function () { locate(box, b.dataset.loc); }; });
+    box.querySelectorAll("[data-lis]").forEach(function (b) {
+      b.onclick = function () {
+        if (b.dataset.on) { stopSpeaking(); b.textContent = "🎧 Listen from here"; delete b.dataset.on; return; }
+        box.querySelectorAll("[data-lis][data-on]").forEach(function (o) { o.textContent = "🎧 Listen from here"; delete o.dataset.on; });
+        var el = locate(box, b.dataset.lis); if (!el) return;
+        var pEl = el.closest("p"), idx = Array.prototype.indexOf.call(box.querySelectorAll(".rvw-r p"), pEl) - 1;
+        var rest = lines.slice(Math.max(0, idx)).map(function (l) { return [l.spk || "N", l.t]; });
+        b.dataset.on = "1"; b.textContent = "⏹ Stop";
+        warmUp(function () { speakLines(rest, function () { b.textContent = "🎧 Listen from here"; delete b.dataset.on; }); });
+      };
+    });
+  }
+  function locate(box, key) {
+    var el = box.querySelector('[data-ev~="' + key + '"]');
+    if (!el) return null;
+    var pane = box.querySelector(".rvw-r");
+    pane.scrollTo({ top: el.offsetTop - 60, behavior: "smooth" });
+    if (window.innerWidth <= 800) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    box.querySelectorAll(".ev.flash").forEach(function (e) { e.classList.remove("flash"); });
+    el.classList.add("flash"); setTimeout(function () { el.classList.remove("flash"); }, 2200);
+    return el;
   }
   function markEssay(text, cm) {
     var marks = cm.slice().filter(function (c) { return c.end > c.start && c.end <= text.length; }).sort(function (a, b) { return a.start - b.start; });
