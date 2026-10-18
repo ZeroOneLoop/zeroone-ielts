@@ -214,6 +214,8 @@
   var S = { data: null, answers: {}, transcripts: {}, audioDone: {}, secIndex: -1, plays: {}, timerEnd: 0, timerId: null, saveTimer: null, submitted: false,
             flags: {}, meta: { focus_lost: 0, away_secs: 0, bursts: [] } };
   var LS_KEY = "zero1-ielts-" + token;
+  var BACK = (function () { var b = params.get("back") || ""; return /^https:\/\/zerooneloop\.github\.io\//.test(b) || (b.indexOf(location.origin + "/") === 0) ? b : ""; })();
+  function backBtn() { return BACK ? '<a class="btn" href="' + esc(BACK) + '" style="text-decoration:none;display:inline-block;margin-top:14px">← Back to my portal</a>' : ""; }
 
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function rpc(name, body) {
@@ -227,7 +229,7 @@
   function hideChrome() { $("navbar").style.display = "none"; $("timer").style.display = "none"; $("lstat").style.display = "none"; $("vol").style.display = "none"; }
   function screenMessage(icon, title, body) {
     hideChrome();
-    main.innerHTML = '<div class="card center"><div class="big-ico">' + icon + '</div><h1>' + esc(title) + '</h1><p class="dim">' + body + '</p></div>';
+    main.innerHTML = '<div class="card center"><div class="big-ico">' + icon + '</div><h1>' + esc(title) + '</h1><p class="dim">' + body + '</p>' + backBtn() + '</div>';
   }
   function showError(code, name) {
     var msgs = {
@@ -312,6 +314,22 @@
   }
   function setAnswer(id, val) { S.answers[id] = val; persist(); refreshNav(); }
 
+  // tell the office where the student is ("Reading — 23/40 answered, 31 min left")
+  function pingDetail() {
+    var sec = sections()[S.secIndex]; if (!sec) return "";
+    var d = "Taking " + sec.title;
+    if (sec.type === "listening" || sec.type === "reading") {
+      var qs = allQuestions(sec), done = qs.filter(function (x) { return String(S.answers[x.q.id] || "").trim(); }).length;
+      d += isExamListening(sec) && typeof L.livePart === "number" ? " — Part " + (L.livePart + 1) + ", " + done + "/" + qs.length + " answered" : " — " + done + "/" + qs.length + " answered";
+    } else if (sec.type === "writing") {
+      d += " — " + sec.tasks.map(function (t) { return words(S.answers[t.id] || "") + " words"; }).join(" + ");
+    }
+    if (S.timerEnd > Date.now() && !isExamListening(sec)) d += ", " + Math.ceil((S.timerEnd - Date.now()) / 60000) + " min left";
+    if (document.hidden) d += " (away from the page)";
+    return d;
+  }
+  setInterval(function () { if (S.secIndex >= 0 && !S.submitted && S.data) rpc("ielts_public_ping", { p_token: token, p_detail: pingDetail() }).catch(function () {}); }, 45000);
+
   // leaving the page during a section is recorded for the trainer
   var awayAt = 0;
   document.addEventListener("visibilitychange", function () {
@@ -385,6 +403,7 @@
       if (last) submitAll(); else goSection(i + 1);
     };
     buildNav(sec);
+    setTimeout(function () { rpc("ielts_public_ping", { p_token: token, p_detail: pingDetail() }).catch(function () {}); }, 1500);
     if (isExamListening(sec)) { $("timer").style.display = "none"; clearInterval(S.timerId); L.start(sec, resumeListening || (prevSec === i ? L.saved : null)); }
     else { L.hideStatus(); startTimer(sec.minutes, restore); }
     persist();
@@ -992,7 +1011,7 @@
     hideChrome(); RV = []; RCM = r.comments || (r.result && r.result.comments) || [];
     var res = r.result || {}, secs = (r.content && r.content.sections) || [], acad = r.kind === "academic";
     var bands = ["listening", "reading", "writing", "speaking"].filter(function (k) { return res[k] != null; });
-    var html = '<div class="card"><p class="dim" style="margin:0">Results for ' + esc(r.student_name) + '</p><h1>' + esc(r.title) + '</h1>' +
+    var html = (BACK ? '<p style="margin:0 0 10px"><a href="' + esc(BACK) + '" style="font-weight:700;color:var(--blue);text-decoration:none">← Back to my portal</a></p>' : '') + '<div class="card"><p class="dim" style="margin:0">Results for ' + esc(r.student_name) + '</p><h1>' + esc(r.title) + '</h1>' +
       (r.submitted_at ? '<p class="dim" style="margin:0">Taken on ' + new Date(r.submitted_at).toLocaleDateString() + (r.marked_by ? ' · marked by ' + esc(r.marked_by) : '') + '</p>' : '');
     if (acad) html += '<div class="bandgrid">' + bands.map(function (k) { return '<div class="band"><span class="dim">' + BAND_LABEL[k] + '</span><b>' + Number(res[k]).toFixed(1) + '</b></div>'; }).join("") +
       (res.overall != null ? '<div class="band tot"><span>Overall</span><b>' + Number(res.overall).toFixed(1) + '</b></div>' : '') + '</div>';
