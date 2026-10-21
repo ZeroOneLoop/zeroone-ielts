@@ -188,6 +188,20 @@
     .split { grid-template-columns: 1fr; } .passage { position: static; max-height: none; }
     h1 { font-size: 21px; } .card { padding: 16px; } .qnums { display: none; } .vol { display: none !important; }
   }
+  /* A1 spoken examiner */
+  .lstat.rec { background: #c0352b; color: #fff; }
+  .xq { transition: border-color .2s, box-shadow .2s, opacity .2s; }
+  .xq.on { border-color: var(--blue, #2d74bb); box-shadow: 0 0 0 3px rgba(45,116,187,.18); }
+  .xq.done:not(.on) { opacity: .7; }
+  .xq-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+  .xq-tools { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ptext.hid { display: none; }
+  .xq-listen, .xl-st { display: flex; align-items: center; gap: 6px; font-weight: 700; color: #1d3f72; background: #eef4fb; border-radius: 8px; padding: 8px 12px; margin: 6px 0; }
+  .xq-listen .eq, .xl-st .eq { display: inline-flex; gap: 2px; align-items: flex-end; height: 12px; }
+  .xq-listen .eq i, .xl-st .eq i { width: 3px; background: #2d74bb; border-radius: 2px; animation: eq 0.9s ease-in-out infinite; }
+  .xq-listen .eq i:nth-child(2), .xl-st .eq i:nth-child(2) { animation-delay: .15s; } .xq-listen .eq i:nth-child(3), .xl-st .eq i:nth-child(3) { animation-delay: .3s; } .xq-listen .eq i:nth-child(4), .xl-st .eq i:nth-child(4) { animation-delay: .45s; }
+  .xlp.on { border-color: var(--blue, #2d74bb); box-shadow: 0 0 0 3px rgba(45,116,187,.14); }
+  @media (prefers-reduced-motion: reduce) { .xq-listen .eq i, .xl-st .eq i { animation: none; } }
 </style>
 </head>
 <body>
@@ -203,6 +217,100 @@
 <div class="navbar" id="navbar"><div class="inner"><div class="qnav" id="qnav"><span class="dim" id="navInfo"></span></div><button class="btn" id="nextBtn">Next section →</button></div></div>
 
 <script>
+// The A1 spoken examiner (Life Skills A1, LanguageCert A1).
+// Shared by the test page (runs the exam) and voices.mjs (makes the audio files),
+// so both always use exactly the same words. Plain ES5 on purpose.
+var EXAMINER = (function () {
+  // our voices (Microsoft Azure neural, British): X = examiner, F / M = people in the recordings
+  var VOICES = { X: "en-GB-SoniaNeural", F: "en-GB-LibbyNeural", M: "en-GB-RyanNeural" };
+  var RATE = "-6%";           // A1: a little slower than normal speech
+  var BEEP_PAUSE = 400;
+
+  function clean(t) {
+    var out = String(t || "")
+      .replace(/:\s*\n+\s*[•\-]\s*/g, ": ")          // "about:\n• where" -> "about: where"
+      .replace(/\s*[—–]\s*/g, ", ").replace(/\n+\s*[•\-]\s*/g, ", ").replace(/\n+/g, " ").replace(/\s{2,}/g, " ").trim();
+    return out && !/[.?!"”]$/.test(out) ? out + "." : out;
+  }
+  // the examiner talks about itself as "I"
+  function firstPerson(t) {
+    return String(t || "").replace(/\bthe examiner (?:will )?asks? you\b/gi, "I'm going to ask you").replace(/\bthe examiner\b/gi, "I");
+  }
+  // spoken form of an answer option: "A  a teacher" -> "A: a teacher."
+  function opt(o) {
+    var m = String(o).match(/^\s*([A-D])[\s.)]+(.*)$/);
+    var s = m ? m[1] + ": " + m[2].trim() : String(o).trim();
+    return /[.?!]$/.test(s) ? s : s + ".";
+  }
+  // drop sentences that only make sense on screen (buttons, recording, playing)
+  function spokenIntro(t) {
+    var keep = (String(t || "").match(/[^.!?]+[.!?]*/g) || []).filter(function (s) { return !/record|button|press|click|play it|play each|you can play/i.test(s); });
+    return clean(firstPerson(keep.join(" ")));
+  }
+  function unit(segs) { return { segs: segs }; }            // one audio clip: [[voiceKey, text], ...]
+  function x(t) { return unit([["X", t]]); }
+
+  // fixed lines used by every test
+  var COMMON = {
+    soundCheck: x("Hello. If you can hear me clearly, your sound is working."),
+    hello: x("Hello. I'm your examiner today. Please listen carefully, and answer after the beep. Let's begin."),
+    listenAgain: x("Now listen again."),
+    choose: x("Now choose your answers."),
+    nextQ: x("Thank you."),
+    end: x("Thank you. That is the end of the test. Goodbye.")
+  };
+
+  // the steps for one section: say (examiner talks), ask (examiner asks, student answers), play (a recording), answer (time to choose)
+  function sectionSteps(sec, si) {
+    var steps = [];
+    if (sec.type === "speaking") {
+      var intro = spokenIntro(sec.intro);
+      steps.push({ k: "say", u: x(clean(sec.title) + (intro ? " " + intro : " Listen to each question, and answer after the beep.")) });
+      (sec.parts || []).forEach(function (p) {
+        if (p.prepSeconds) steps.push({ k: "say", u: x("For this part, you have " + p.prepSeconds + " seconds to think after the question. Then start talking after the beep.") });
+        (p.prompts || []).forEach(function (pr) {
+          var lead = pr.picture ? "Look at the picture. " : "";
+          steps.push({ k: "ask", id: pr.id, secs: pr.seconds || 30, prep: p.prepSeconds || 0, u: x(lead + clean(pr.text)) });
+        });
+      });
+    } else if (sec.type === "listening") {
+      steps.push({ k: "say", u: x(clean(sec.title) + " You will hear each recording two times. First, look at the questions. Then listen, and choose the correct answers.") });
+      (sec.parts || []).forEach(function (p, pi) {
+        var qs = (p.questions || []).map(function (q, qi) {
+          return "Question " + (String(q.id || "").replace(/^[A-Za-z]+/, "") || qi + 1) + ". " + clean(q.prompt) + " " + (q.options || []).map(opt).join(" ");
+        }).join(" ");
+        steps.push({ k: "say", part: pi, u: x(clean(p.title) + " " + (qs ? "Look at the questions. " + qs : "")) });
+        var plays = p.plays || 2;
+        var rec = unit((p.script || []).map(function (l) { return [VOICES[l[0]] ? l[0] : "F", clean(l[1])]; }));
+        for (var n = 0; n < plays; n++) {
+          if (n > 0) steps.push({ k: "say", part: pi, u: COMMON.listenAgain });
+          steps.push({ k: "play", part: pi, id: p.id, u: rec });
+        }
+        steps.push({ k: "say", part: pi, u: COMMON.choose });
+        steps.push({ k: "answer", part: pi, secs: Math.max(20, (p.questions || []).length * 10) });
+      });
+    }
+    return steps;
+  }
+
+  // every audio clip a test needs (used by voices.mjs to make the files)
+  function allUnits(content) {
+    var out = [];
+    Object.keys(COMMON).forEach(function (k) { out.push(COMMON[k]); });
+    (content.sections || []).forEach(function (s, i) { sectionSteps(s, i).forEach(function (st) { if (st.u) out.push(st.u); }); });
+    return out;
+  }
+  // the file name of a clip: the same text and voices always give the same name
+  function keyText(u) { return RATE + "|" + u.segs.map(function (s) { return (VOICES[s[0]] || VOICES.X) + ":" + s[1]; }).join("\n"); }
+  // SSML for Azure (one clip can have several speakers)
+  function esc(t) { return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function ssml(u) {
+    return '<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-GB">' +
+      u.segs.map(function (s, i) { return '<voice name="' + (VOICES[s[0]] || VOICES.X) + '"><prosody rate="' + RATE + '">' + esc(s[1]) + '</prosody>' + (i < u.segs.length - 1 ? '<break time="350ms"/>' : "") + '</voice>'; }).join("") + "</speak>";
+  }
+  return { VOICES: VOICES, RATE: RATE, BEEP_PAUSE: BEEP_PAUSE, COMMON: COMMON, sectionSteps: sectionSteps, allUnits: allUnits, keyText: keyText, ssml: ssml };
+})();
+
 (function () {
   "use strict";
   var SB_URL = "https://czxaxqzrxxwzuljkqero.supabase.co";
@@ -269,8 +377,9 @@
         '<li>Use <b>Google Chrome</b> on a laptop or computer.</li>' +
         (hasListening ? '<li>Use <b>headphones</b>. ' + (exam ? 'Just like the real test, the Listening recording <b>starts by itself and plays once only</b>. You can\'t pause or replay it. Before each part you get time to read the questions.' : '') + '</li>' : '') +
         (hasSpeaking ? '<li>You will record your voice. When the browser asks, click <b>Allow</b> for the microphone.</li>' : '') +
+        (isA1() ? '<li>' + (practice() ? 'An examiner <b>speaks to you</b> and the questions are also written on the screen.' : 'Just like the real exam, an examiner <b>asks the questions out loud</b>. Listen carefully — you can ask for a question to be repeated once.') + ' The test moves on by itself.</li>' : '') +
         '<li>Your answers save automatically. If the page closes, open the same link again to continue.</li>' +
-        '<li>Each section is timed. When the time ends you move on automatically.</li>' +
+        (isA1() ? '' : '<li>Each section is timed. When the time ends you move on automatically.</li>') +
         '<li>Stay on this page during the test — leaving the page is recorded.</li>' +
       '</ul>' +
       (hasSpeaking ? '<div class="notice info" id="micCheck">Test your microphone: <button class="btn ghost sm" id="micBtn" style="margin-left:8px">Check microphone</button></div>' : '') +
@@ -285,15 +394,17 @@
     };
     var snd = $("sndBtn");
     if (snd) snd.onclick = function () {
+      if (isA1()) return warmUp(function () { loadAudioIndex(function () { playUnit(EXAMINER.COMMON.soundCheck, function () { $("sndCheck").className = "notice good"; $("sndCheck").textContent = "✓ If you heard the examiner, your sound is working."; }); }); });
       warmUp(function () { speakOne("N", "Hello. If you can hear this clearly, your sound is working.", function () { $("sndCheck").className = "notice good"; $("sndCheck").textContent = "✓ If you heard the sentence, your sound is working."; }); });
     };
     $("startBtn").onclick = function () {
       $("startBtn").disabled = true; $("startBtn").textContent = "Getting ready…";
-      warmUp(function () {
+      warmUp(function () { loadAudioIndex(function () {
+        try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume && actx.resume(); } catch (e) {}
         var first = 0;
         try { var saved = JSON.parse(localStorage.getItem(LS_KEY) || "{}"); if (saved.secIndex > 0) first = saved.secIndex; } catch (e) {}
         goSection(first);
-      });
+      }); });
     };
   }
 
@@ -367,7 +478,7 @@
 
   // ---------- section rendering ----------
   function goSection(i, resumeListening) {
-    stopRecordingIfAny(); L.stop(); stopSpeaking();
+    stopRecordingIfAny(); L.stop(); XM.stop(); stopSpeaking();
     var restore = i === S.secIndex || (S.secIndex === -1 && S.timerEnd > Date.now());
     var prevSec = S.secIndex;
     S.secIndex = i;
@@ -376,6 +487,10 @@
     var html = steps;
     if (isExamListening(sec)) html += renderExamListening(sec);
     else if (isExamReading(sec)) html += renderExamReading(sec);
+    else if (isA1() && (sec.type === "speaking" || sec.type === "listening")) {
+      html += '<div class="card"><h1>' + esc(sec.title) + '</h1><p class="dim">' + (sec.type === "speaking" ? "The examiner asks each question out loud. After the beep, answer in English — your voice is recorded." : "The examiner plays each recording two times. Choose your answers on the screen.") + '</p></div>';
+      html += sec.type === "speaking" ? renderSpeakingX(sec) : renderListeningX(sec);
+    }
     else {
       html += '<div class="card"><h1>' + esc(sec.title) + '</h1>' + (sec.intro ? '<p class="dim">' + esc(sec.intro) + '</p>' : "") + '</div>';
       if (sec.type === "listening") html += renderListening(sec);
@@ -393,7 +508,7 @@
     var nb = $("nextBtn");
     nb.textContent = last ? "Finish & submit" : "Next section →";
     nb.className = last ? "btn green" : "btn";
-    nb.style.display = isExamListening(sec) ? "none" : "";
+    nb.style.display = isExamListening(sec) || isA1() ? "none" : "";
     nb.onclick = function () {
       var msg = last ? "Submit your assessment now? You can't change your answers after this." : "Go to the next section? You can't come back to this section.";
       if (sec.type === "speaking" && hasUnrecorded(sec)) msg = "Some questions have no recording yet. " + msg;
@@ -405,6 +520,7 @@
     buildNav(sec);
     setTimeout(function () { rpc("ielts_public_ping", { p_token: token, p_detail: pingDetail() }).catch(function () {}); }, 1500);
     if (isExamListening(sec)) { $("timer").style.display = "none"; clearInterval(S.timerId); L.start(sec, resumeListening || (prevSec === i ? L.saved : null)); }
+    else if (isA1()) { $("timer").style.display = "none"; clearInterval(S.timerId); XM.start(sec, i === 0 && !Object.keys(S.audioDone || {}).length); }
     else { L.hideStatus(); startTimer(sec.minutes, restore); }
     persist();
     window.scrollTo(0, 0);
@@ -918,13 +1034,13 @@
     }
     record(btn, id, secs);
   }
-  function record(btn, id, secs) {
+  function record(btn, id, secs, onDone) {
     var st = $("st-" + id);
     if (!navigator.mediaDevices || !window.MediaRecorder) { st.innerHTML = '<span class="pill wait">Recording is not supported in this browser — please use Chrome.</span>'; return; }
     navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
       var mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : (MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "");
       var mr = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 32000 } : undefined);
-      var chunksA = [], started = Date.now(), cancelled = false, transcript = "", recog = null;
+      var chunksA = [], started = Date.now(), cancelled = false, discard = false, transcript = "", recog = null;
       var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SR) { try { recog = new SR(); recog.lang = "en-GB"; recog.continuous = true; recog.interimResults = false;
         recog.onresult = function (e) { for (var k = e.resultIndex; k < e.results.length; k++) if (e.results[k].isFinal) transcript += e.results[k][0].transcript + " "; };
@@ -937,7 +1053,8 @@
         main.querySelectorAll("[data-rec]").forEach(function (x) { x.disabled = false; });
         btn.textContent = "🎙 Record again";
         var dur = Math.round((Date.now() - started) / 1000);
-        if (cancelled && dur < 2) { st.innerHTML = ""; return; }
+        if (discard || (cancelled && dur < 2)) { st.innerHTML = ""; return; }
+        if (onDone) setTimeout(onDone, 50);
         var blob = new Blob(chunksA, { type: mr.mimeType || "audio/webm" });
         st.innerHTML = '<span class="pill wait">Uploading…</span>';
         setTimeout(function () {
@@ -952,18 +1069,198 @@
           fr.readAsDataURL(blob);
         }, 600);
       };
-      rec = { stop: function (isCancel) { cancelled = !!isCancel; if (mr.state !== "inactive") mr.stop(); } };
+      rec = { stop: function (isCancel) { cancelled = !!isCancel; if (mr.state !== "inactive") mr.stop(); }, discard: function () { discard = true; if (mr.state !== "inactive") mr.stop(); } };
       mr.start(1000);
       main.querySelectorAll("[data-rec]").forEach(function (x) { if (x !== btn) x.disabled = true; });
       btn.textContent = "■ Stop recording";
       btn.onclick = function () { if (rec) rec.stop(false); btn.onclick = function () { startPromptFlow(btn); }; };
       var tick = setInterval(function () {
         var el = Math.round((Date.now() - started) / 1000), rem = secs - el;
-        st.innerHTML = '<span class="recdot"></span> <b>Recording</b> · ' + Math.max(0, rem) + 's left';
+        st.innerHTML = '<span class="recdot"></span> <b>Recording</b> · ' + Math.max(0, rem) + 's left' + (onDone ? ' <button type="button" class="btn ghost sm" data-xdone>I\'ve finished</button>' : "");
+        var fin = st.querySelector("[data-xdone]"); if (fin) fin.onclick = function () { if (rec) rec.stop(false); };
         if (rem <= 0 && rec) { rec.stop(false); btn.onclick = function () { startPromptFlow(btn); }; }
       }, 500);
-    }).catch(function () { st.innerHTML = '<span class="pill wait">Microphone blocked — click the lock icon in the address bar, allow the microphone, then try again.</span>'; });
+    }).catch(function () { st.innerHTML = '<span class="pill wait">Microphone blocked — click the lock icon in the address bar, allow the microphone, then try again.</span>'; if (onDone) XM.micBlocked(id); });
   }
+
+  // ---------- A1: natural voices + the spoken examiner ----------
+  var AUD = { idx: null, gen: 0, cur: null };
+  function loadAudioIndex(done) {
+    if (AUD.idx) { done(); return; }
+    fetch("audio/index.json", { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { AUD.idx = {}; ((j && j.files) || []).forEach(function (f) { AUD.idx[f] = 1; }); done(); })
+      .catch(function () { AUD.idx = {}; done(); });
+  }
+  function hasVoices() { return !!(AUD.idx && Object.keys(AUD.idx).length); }
+  function clipName(u) {
+    if (!(window.crypto && crypto.subtle && window.TextEncoder)) return Promise.reject();
+    return crypto.subtle.digest("SHA-256", new TextEncoder().encode(EXAMINER.keyText(u))).then(function (b) {
+      return Array.prototype.map.call(new Uint8Array(b), function (x) { return ("0" + x.toString(16)).slice(-2); }).join("").slice(0, 20);
+    });
+  }
+  function stopUnit() { AUD.gen++; if (AUD.cur) { try { AUD.cur.pause(); } catch (e) {} AUD.cur = null; } stopSpeaking(); }
+  // plays one examiner / recording clip: the natural voice file if we have it, otherwise the browser's own voice
+  function playUnit(u, done) {
+    stopUnit(); var gen = AUD.gen, fin = function () { if (gen === AUD.gen) done(); };
+    var fallback = function () {
+      if (gen !== AUD.gen) return;
+      if (!synth) { setTimeout(fin, 1200); return; }
+      speakLines(u.segs.map(function (sg) { return [sg[0] === "X" ? "N" : sg[0], sg[1]]; }), fin);
+    };
+    clipName(u).then(function (h) {
+      if (gen !== AUD.gen) return;
+      if (!AUD.idx || !AUD.idx[h]) return fallback();
+      var a = new Audio("audio/" + h + ".mp3"); a.volume = L.vol; AUD.cur = a;
+      a.onended = fin; a.onerror = fallback;
+      var pr = a.play(); if (pr && pr.catch) pr.catch(fallback);
+    }, fallback);
+  }
+  var actx = null;
+  function beep(done) {
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      var o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = 880; o.type = "sine";
+      g.gain.setValueAtTime(0.0001, actx.currentTime); g.gain.exponentialRampToValueAtTime(0.25 * L.vol, actx.currentTime + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.3);
+      o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime + 0.32);
+    } catch (e) {}
+    setTimeout(done, EXAMINER.BEEP_PAUSE);
+  }
+  function practice() { return S.data && S.data.voice_mode === "practice"; }
+  function showWords() { return practice() || (!hasVoices() && !synth); }
+
+  function renderSpeakingX(sec) {
+    var open = showWords();
+    return sec.parts.map(function (p) {
+      return '<div class="card"><h2>' + esc(p.title) + '</h2>' + p.prompts.map(function (pr, k) {
+        var done = S.audioDone[pr.id];
+        return '<div class="speak xq' + (done ? " done" : "") + '" id="sp-' + pr.id + '">' +
+          (pr.picture ? '<figure class="pic"><div class="pic-scene">' + pr.picture.emojis.map(function (e) { return '<span>' + esc(e) + '</span>'; }).join("") + '</div><figcaption>' + esc(pr.picture.caption) + '</figcaption></figure>' : "") +
+          '<div class="xq-h"><b>Question ' + (k + 1) + '</b><span class="xq-tools">' +
+            (open ? "" : '<button type="button" class="btn ghost sm" data-show="' + pr.id + '">👁 Show the words</button>') +
+            '<button type="button" class="btn ghost sm" data-again="' + pr.id + '" disabled>🔁 Repeat the question</button></span></div>' +
+          '<div class="ptext' + (open ? "" : " hid") + '" id="pt-' + pr.id + '">' + esc(pr.text) + '</div>' +
+          (open ? "" : '<div class="xq-listen" id="pl-' + pr.id + '">' + (done ? "Answered" : "Listen to the examiner") + '</div>') +
+          '<div class="recbar"><button class="btn" data-rec="' + pr.id + '" data-sec="' + pr.seconds + '" style="display:none">rec</button>' +
+          '<span id="st-' + pr.id + '">' + (done ? '<span class="pill ok">Saved ✓</span>' : "") + '</span></div></div>';
+      }).join("") + '</div>';
+    }).join("");
+  }
+  function renderListeningX(sec) {
+    return sec.parts.map(function (p, pi) {
+      return '<div class="card xlp" id="xp-' + pi + '"><h2>' + esc(p.title) + '</h2><p class="dim">' + esc(p.instructions || "") + '</p>' +
+        '<div class="xl-st" id="xs-' + pi + '">' + ((S.plays[p.id] || 0) >= (p.plays || 2) ? "✓ You heard this recording" : "The examiner will play this recording two times") + '</div>' +
+        '<div style="margin-top:10px">' + p.questions.map(function (q) { return qHTML(q, qNum(q)); }).join("") + '</div></div>';
+    }).join("");
+  }
+  // runs a section: the examiner speaks, asks, plays recordings and moves on by itself
+  var XM = {
+    sec: null, steps: null, i: 0, gen: 0, tick: null,
+    status: function (html, cls) { var el = $("lstat"); el.innerHTML = html; el.style.display = "inline-block"; el.className = "lstat" + (cls ? " " + cls : ""); },
+    stop: function () { XM.gen++; clearInterval(XM.tick); stopUnit(); if (rec && rec.discard) rec.discard(); XM.steps = null; },
+    start: function (sec, first) {
+      XM.stop(); XM.sec = sec;
+      var steps = EXAMINER.sectionSteps(sec, S.secIndex);
+      if (first) steps.unshift({ k: "say", u: EXAMINER.COMMON.hello });
+      // on a re-open, skip what's already done
+      XM.steps = steps.filter(function (st) {
+        if (st.k === "ask") return !S.audioDone[st.id];
+        if (st.part != null) { var p = sec.parts[st.part]; return (S.plays[p.id] || 0) < (p.plays || 2) || st.k === "answer" && false; }
+        return true;
+      });
+      $("vol").style.display = "inline-flex";
+      XM.run(0);
+    },
+    next: function (gen) { if (gen === XM.gen) XM.run(XM.i + 1); },
+    run: function (i) {
+      XM.gen++; var gen = XM.gen; clearInterval(XM.tick); XM.i = i;
+      var st = XM.steps && XM.steps[i];
+      if (!st) return XM.done();
+      main.querySelectorAll(".xq.on, .xlp.on").forEach(function (e) { e.classList.remove("on"); });
+      if (st.k === "say") {
+        if (st.part != null) { var pc = $("xp-" + st.part); if (pc) { pc.classList.add("on"); pc.scrollIntoView({ behavior: "smooth", block: "start" }); } }
+        XM.status('<span class="eq"><i></i><i></i><i></i><i></i></span> Examiner speaking');
+        return playUnit(st.u, function () { setTimeout(function () { XM.next(gen); }, 300); });
+      }
+      if (st.k === "play") {
+        var p = XM.sec.parts[st.part]; S.plays[p.id] = (S.plays[p.id] || 0) + 1; persist();
+        var n = S.plays[p.id], of = p.plays || 2, sEl = $("xs-" + st.part);
+        if (sEl) sEl.innerHTML = '<span class="eq"><i></i><i></i><i></i><i></i></span> Playing — ' + (n === 1 ? "first" : "second") + ' time';
+        XM.status('<span class="eq"><i></i><i></i><i></i><i></i></span> Recording · ' + n + ' of ' + of);
+        return playUnit(st.u, function () { if (sEl) sEl.textContent = n >= of ? "✓ You heard this recording " + of + " times" : "Played once"; setTimeout(function () { XM.next(gen); }, 900); });
+      }
+      if (st.k === "answer") {
+        var end = Date.now() + st.secs * 1000, sEl2 = $("xs-" + st.part);
+        var paint = function () {
+          var left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+          XM.status("⏳ Choose your answers · " + left + "s", "wait");
+          if (sEl2) sEl2.innerHTML = 'Choose your answers <button type="button" class="btn ghost sm" id="xok-' + st.part + '">I\'ve chosen ✓</button> <span class="dim">' + left + 's</span>';
+          var b = $("xok-" + st.part); if (b) b.onclick = function () { end = 0; };
+          if (left <= 0) { clearInterval(XM.tick); if (sEl2) sEl2.textContent = "✓ Done"; XM.next(gen); }
+        };
+        paint(); XM.tick = setInterval(paint, 500); return;
+      }
+      if (st.k === "ask") XM.ask(st, gen);
+    },
+    ask: function (st, gen) {
+      var card = $("sp-" + st.id), pl = $("pl-" + st.id), again = main.querySelector('[data-again="' + st.id + '"]');
+      if (card) { card.classList.add("on"); card.scrollIntoView({ behavior: "smooth", block: "center" }); }
+      if (pl) pl.innerHTML = '<span class="eq"><i></i><i></i><i></i><i></i></span> Listen…';
+      if (again) again.disabled = true;
+      XM.status('<span class="eq"><i></i><i></i><i></i><i></i></span> Examiner asking');
+      playUnit(st.u, function () {
+        if (gen !== XM.gen) return;
+        var go = function () {
+          if (gen !== XM.gen) return;
+          beep(function () {
+            if (gen !== XM.gen) return;
+            if (pl) pl.textContent = "Your turn — speak now";
+            var used = (S.meta.repeats || {})[st.id] || 0;
+            if (again) { again.disabled = !practice() && used >= 1; again.onclick = function () { XM.repeat(st); }; }
+            XM.status('<span class="recdot"></span> Your answer', "rec");
+            var btn = main.querySelector('[data-rec="' + st.id + '"]');
+            record(btn, st.id, st.secs, function () {
+              if (gen !== XM.gen) return;
+              if (again) again.disabled = true;
+              if (pl) pl.textContent = "Answered";
+              if (card) card.classList.add("done");
+              playUnit(EXAMINER.COMMON.nextQ, function () { XM.next(gen); });
+            });
+          });
+        };
+        if (st.prep) {
+          var left = st.prep; if (pl) pl.textContent = "Think… " + left + "s";
+          XM.tick = setInterval(function () { left--; if (pl) pl.textContent = "Think… " + left + "s"; if (left <= 0) { clearInterval(XM.tick); go(); } }, 1000);
+        } else go();
+      });
+    },
+    repeat: function (st) {
+      var r = S.meta.repeats = S.meta.repeats || {};
+      if (!practice() && (r[st.id] || 0) >= 1) return;
+      r[st.id] = (r[st.id] || 0) + 1; persist();
+      if (rec && rec.discard) rec.discard();
+      XM.gen++; clearInterval(XM.tick);
+      setTimeout(function () { XM.ask(st, XM.gen); }, 250);
+    },
+    micBlocked: function (id) { XM.status("🎙 Microphone blocked", "wait"); },
+    done: function () {
+      XM.stop(); var last = S.secIndex >= sections().length - 1;
+      if (!last) { XM.status("✓ Part finished · next part starting…"); setTimeout(function () { goSection(S.secIndex + 1); }, 1500); return; }
+      XM.status("✓ The test is finished");
+      playUnit(EXAMINER.COMMON.end, function () {
+        var nb = $("nextBtn"); nb.style.display = ""; nb.textContent = "Finish & submit"; nb.className = "btn green";
+        nb.onclick = function () { submitAll(); };
+        main.insertAdjacentHTML("beforeend", '<div class="card center"><h2>Well done — that\'s the end of the test.</h2><p class="dim">Press <b>Finish &amp; submit</b> to send your answers to your trainer.</p><button class="btn green" id="xsubmit">Finish &amp; submit</button></div>');
+        $("xsubmit").onclick = function () { submitAll(); };
+        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+      });
+    }
+  };
+  // "Show the words" (the trainer sees it was used)
+  main.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("[data-show]"); if (!b) return;
+    var id = b.dataset.show, t = $("pt-" + id); if (t) t.classList.remove("hid");
+    S.meta.shown = S.meta.shown || {}; S.meta.shown[id] = true; persist(); b.remove();
+  });
 
   // ---------- submit ----------
   function submitAll() {
