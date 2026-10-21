@@ -886,7 +886,7 @@ var EXAMINER = (function () {
     pickVoices();
     var u = new SpeechSynthesisUtterance(text), v = VOICE[spk] || VOICE[spk.charAt(0)] || null;
     if (v) { u.voice = v; u.lang = v.lang; } else u.lang = "en-GB";
-    u.rate = isA1() ? 0.85 : (RATE[spk] || 0.97);
+    u.rate = (isA1() ? 0.85 : (RATE[spk] || 0.97)) * speed();
     u.pitch = PITCH[spk] || 1;
     u.volume = L.vol;
     return u;
@@ -1111,6 +1111,7 @@ var EXAMINER = (function () {
       if (gen !== AUD.gen) return;
       if (!AUD.idx || !AUD.idx[h]) return fallback();
       var a = new Audio("audio/" + h + ".mp3"); a.volume = L.vol; AUD.cur = a;
+      a.preservesPitch = a.mozPreservesPitch = a.webkitPreservesPitch = true; a.playbackRate = speed();
       a.onended = fin; a.onerror = fallback;
       var pr = a.play(); if (pr && pr.catch) pr.catch(fallback);
     }, fallback);
@@ -1126,6 +1127,8 @@ var EXAMINER = (function () {
     setTimeout(done, EXAMINER.BEEP_PAUSE);
   }
   function practice() { return S.data && S.data.voice_mode === "practice"; }
+  // the trainer chose the voice speed when sending the test (1 = normal)
+  function speed() { var v = S.data && Number(S.data.voice_speed); return v >= 0.7 && v <= 1.3 ? v : 1; }
   function showWords() { return practice() || (!hasVoices() && !synth); }
 
   function renderSpeakingX(sec) {
