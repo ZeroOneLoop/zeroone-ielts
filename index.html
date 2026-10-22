@@ -301,14 +301,57 @@ var EXAMINER = (function () {
     return out;
   }
   // the file name of a clip: the same text and voices always give the same name
-  function keyText(u) { return RATE + "|" + u.segs.map(function (s) { return (VOICES[s[0]] || VOICES.X) + ":" + s[1]; }).join("\n"); }
+  // a voice can be a short key (X / F / M) or a full Azure voice name ("en-AU-NatashaNeural")
+  function voiceOf(k) { return VOICES[k] || (String(k).indexOf("-") > 0 ? k : VOICES.X); }
+  // the file name of a clip: the same text, voices and speed always give the same name (A1 clips keep their old names)
+  function keyText(u) { return (u.rate || RATE) + "|" + u.segs.map(function (s) { return voiceOf(s[0]) + ":" + s[1]; }).join("\n"); }
   // SSML for Azure (one clip can have several speakers)
   function esc(t) { return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
   function ssml(u) {
+    var rate = u.rate || RATE;
     return '<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-GB">' +
-      u.segs.map(function (s, i) { return '<voice name="' + (VOICES[s[0]] || VOICES.X) + '"><prosody rate="' + RATE + '">' + esc(s[1]) + '</prosody>' + (i < u.segs.length - 1 ? '<break time="350ms"/>' : "") + '</voice>'; }).join("") + "</speak>";
+      u.segs.map(function (s, i) { return '<voice name="' + voiceOf(s[0]) + '"><prosody rate="' + rate + '">' + esc(s[1]) + '</prosody>' + (i < u.segs.length - 1 ? '<break time="350ms"/>' : "") + '</voice>'; }).join("") + "</speak>";
   }
-  return { VOICES: VOICES, RATE: RATE, BEEP_PAUSE: BEEP_PAUSE, COMMON: COMMON, sectionSteps: sectionSteps, allUnits: allUnits, keyText: keyText, ssml: ssml };
+
+  // ---------- IELTS Listening (real exam flow, natural voices) ----------
+  // The announcer, and a default cast; each part can choose its own cast ("cast": {"F": "en-AU-NatashaNeural", ...}).
+  var NARRATOR = "en-GB-RyanNeural";
+  var CAST = { F: "en-GB-LibbyNeural", M: "en-GB-ThomasNeural", F2: "en-AU-NatashaNeural", M2: "en-AU-WilliamNeural", F3: "en-NZ-MollyNeural", M3: "en-US-GuyNeural" };
+  var IRATE = "0%";   // real exam speed
+  function iunit(voice, text) { return { segs: [[voice, text]], rate: IRATE }; }
+  function castOf(p, key) { return (p.cast && p.cast[key]) || CAST[key] || CAST[String(key).charAt(0)] || CAST.F; }
+  // every step of the recording, exactly as the exam runs it: announcer → time to read → recording → time to check
+  function listeningSteps(sec) {
+    var steps = [], nar = function (t, p) { steps.push({ k: "say", spk: "N", t: t, p: p, u: iunit(NARRATOR, t) }); };
+    nar("IELTS Listening. In this test you will hear four recordings and answer questions on what you hear. You will have time to read the instructions and questions, and you will have a chance to check your work. All the recordings will be played once only. The test is in four parts. Now turn to Part 1.");
+    sec.parts.forEach(function (p, pi) {
+      steps.push({ k: "part", p: pi });
+      nar("Part " + (pi + 1) + ". " + p.context, pi);
+      (p.segments || []).forEach(function (s, si) {
+        var r = String(s.look).split("-"), rng = "questions " + r[0] + " to " + r[1];
+        nar(si === 0 ? ((p.segments.length === 1 && pi === 3) ? "You now have " + (s.lookSeconds || 45) + " seconds to look at " + rng + "." : "First, you have some time to look at " + rng + ".")
+                     : "Before you hear the rest, you have some time to look at " + rng + ".", pi);
+        steps.push({ k: "wait", s: s.lookSeconds || 30, label: "Read questions " + r[0] + "–" + r[1], p: pi });
+        nar("Now listen carefully and answer " + rng + ".", pi);
+        s.script.forEach(function (l) {
+          steps.push({ k: "say", spk: l[0], t: l[1], p: pi, phone: !!p.phone && l[0] !== "N", u: iunit(l[0] === "N" ? NARRATOR : castOf(p, l[0]), l[1]) });
+        });
+      });
+      nar("That is the end of Part " + (pi + 1) + ". You now have " + (p.checkSeconds || 30) + " seconds to check your answers.", pi);
+      steps.push({ k: "wait", s: p.checkSeconds || 30, label: "Check your answers", p: pi });
+    });
+    nar("That is the end of the listening test. You now have two minutes to check your answers.");
+    steps.push({ k: "review", s: sec.reviewSeconds || 120, label: "Final check" });
+    return steps;
+  }
+  // every clip an IELTS Listening test needs (used by voices.mjs)
+  function listeningUnits(content) {
+    var out = [];
+    (content.sections || []).forEach(function (s) { if (s.type === "listening" && s.flow === "exam") listeningSteps(s).forEach(function (st) { if (st.u) out.push(st.u); }); });
+    return out;
+  }
+  return { VOICES: VOICES, RATE: RATE, BEEP_PAUSE: BEEP_PAUSE, COMMON: COMMON, sectionSteps: sectionSteps, allUnits: allUnits, keyText: keyText, ssml: ssml,
+           CAST: CAST, NARRATOR: NARRATOR, listeningSteps: listeningSteps, listeningUnits: listeningUnits };
 })();
 
 (function () {
@@ -926,44 +969,46 @@ var EXAMINER = (function () {
 
   // ---------- the real-exam listening engine ----------
   // The recording runs by itself: narrator → time to read → conversation → time to check, part by part, once only.
-  function buildSteps(sec) {
-    var steps = [], nar = function (t) { steps.push({ k: "say", spk: "N", t: t }); };
-    nar("IELTS Listening. In this test you will hear four recordings and answer questions on what you hear. You will have time to read the instructions and questions, and you will have a chance to check your work. All the recordings will be played once only. The test is in four parts. Now turn to Part 1.");
-    sec.parts.forEach(function (p, pi) {
-      steps.push({ k: "part", p: pi });
-      nar("Part " + (pi + 1) + ". " + p.context);
-      p.segments.forEach(function (s, si) {
-        var r = s.look.split("-"), rng = "questions " + r[0] + " to " + r[1];
-        nar(si === 0 ? (p.segments.length === 1 && pi === 3 ? "You now have " + (s.lookSeconds || 45) + " seconds to look at " + rng + "." : "First, you have some time to look at " + rng + ".")
-                     : "Before you hear the rest, you have some time to look at " + rng + ".");
-        steps.push({ k: "wait", s: s.lookSeconds || 30, label: "Read questions " + r[0] + "–" + r[1], p: pi });
-        nar("Now listen carefully and answer " + rng + ".");
-        s.script.forEach(function (l) { chunks(l[1]).forEach(function (c) { steps.push({ k: "say", spk: l[0], t: c, p: pi }); }); });
-      });
-      nar("That is the end of Part " + (pi + 1) + ". You now have " + (p.checkSeconds || 30) + " seconds to check your answers.");
-      steps.push({ k: "wait", s: p.checkSeconds || 30, label: "Check your answers", p: pi });
+  function buildSteps(sec) { return EXAMINER.listeningSteps(sec); }
+  // natural-voice clips for each line (null = use the browser voice for that line)
+  var LA = { names: null, phone: null };
+  function prepClips(steps, done) {
+    loadAudioIndex(function () {
+      var ps = steps.map(function (st) { return st.k === "say" && st.u && hasVoices() ? clipName(st.u).then(function (h) { return AUD.idx[h] ? h : null; }, function () { return null; }) : Promise.resolve(null); });
+      Promise.all(ps).then(function (a) { LA.names = a; done(); }, function () { LA.names = []; done(); });
     });
-    nar("That is the end of the listening test. You now have two minutes to check your answers.");
-    steps.push({ k: "review", s: sec.reviewSeconds || 120, label: "Final check" });
-    return steps;
+  }
+  // phone calls in Part 1 sound like a real phone line
+  function phoneLine(a) {
+    try {
+      var C = LA.ctx = LA.ctx || new (window.AudioContext || window.webkitAudioContext)();
+      var src = C.createMediaElementSource(a), hp = C.createBiquadFilter(), pk = C.createBiquadFilter(), lp = C.createBiquadFilter();
+      hp.type = "highpass"; hp.frequency.value = 330; pk.type = "peaking"; pk.frequency.value = 1700; pk.gain.value = 5; pk.Q.value = 0.9; lp.type = "lowpass"; lp.frequency.value = 3300;
+      src.connect(hp); hp.connect(pk); pk.connect(lp); lp.connect(C.destination);
+      if (C.state === "suspended") C.resume();
+    } catch (e) {}
   }
   var L = {
     sec: null, steps: null, i: 0, gen: 0, waitEnd: 0, tick: null, dog: null, lastEvt: 0, livePart: -1, vol: 1, saved: null, finished: false,
     pos: function () { return L.steps ? { s: S.secIndex, i: L.i, w: L.waitEnd } : L.saved; },
     hideStatus: function () { $("lstat").style.display = "none"; $("vol").style.display = "none"; L.livePart = -1; },
     status: function (html, waiting) { var el = $("lstat"); el.innerHTML = html; el.style.display = "inline-block"; el.classList.toggle("wait", !!waiting); },
-    stop: function () { L.gen++; clearInterval(L.tick); clearInterval(L.dog); if (synth) synth.cancel(); L.steps = null; },
+    stop: function () { L.gen++; clearInterval(L.tick); clearInterval(L.dog); if (synth) synth.cancel(); if (AUD.cur) { try { AUD.cur.pause(); } catch (e) {} AUD.cur = null; } L.steps = null; },
     start: function (sec, resume) {
       L.stop(); L.sec = sec; L.steps = buildSteps(sec); L.finished = false;
       $("vol").style.display = "inline-flex";
       var from = 0;
       if (resume && resume.s === S.secIndex && resume.i > 0 && resume.i < L.steps.length) { from = resume.i; L.waitEnd = resume.w || 0; L.waitStep = from; }
-      if (!synth) {
-        main.insertAdjacentHTML("afterbegin", '<div class="notice bad">This browser cannot play the listening recording. Please open the link in Google Chrome on a computer.</div>');
-        $("nextBtn").style.display = ""; $("nextBtn").textContent = "Skip listening →"; return;
-      }
-      L.dog = setInterval(L.watch, 3000);
-      L.run(from);
+      var go = function () {
+        var natural = LA.names && LA.names.some(Boolean);
+        if (!synth && !natural) {
+          main.insertAdjacentHTML("afterbegin", '<div class="notice bad">This browser cannot play the listening recording. Please open the link in Google Chrome on a computer.</div>');
+          $("nextBtn").style.display = ""; $("nextBtn").textContent = "Skip listening →"; return;
+        }
+        L.dog = setInterval(L.watch, 3000);
+        L.run(from);
+      };
+      LA.names = null; prepClips(L.steps, go);
     },
     progress: function () {
       var says = 0, done = 0; L.steps.forEach(function (st, j) { var w = st.k === "say" ? st.t.length : (st.s || 0) * 14; says += w; if (j < L.i) done += w; });
@@ -972,6 +1017,7 @@ var EXAMINER = (function () {
     header: function (title, sub, live) { $("lhTitle").textContent = title; $("lhSub").textContent = sub; $("lhead").classList.toggle("live", !!live); },
     run: function (i) {
       L.gen++; var gen = L.gen; clearInterval(L.tick); if (synth) synth.cancel();
+      if (AUD.cur) { try { AUD.cur.pause(); } catch (e) {} AUD.cur = null; }
       L.i = i; L.progress(); lsSave();
       var st = L.steps[i]; if (!st) return;
       if (st.k === "part") { L.livePart = st.p; showPart(st.p); window.scrollTo({ top: 0, behavior: "smooth" }); return L.run(i + 1); }
@@ -990,17 +1036,40 @@ var EXAMINER = (function () {
         return;
       }
       // speak this and all following lines in one go (no gaps, no lag), tracking where we are
-      var j = i, batch = [];
-      while (L.steps[j] && L.steps[j].k === "say") { batch.push(j); j++; }
       var part = L.livePart >= 0 ? L.livePart : 0;
+      var clip = LA.names && LA.names[i];
+      if (clip) {
+        // natural voice: one line at a time, with the small natural gap people leave between turns
+        L.status('<span class="eq"><i></i><i></i><i></i><i></i></span>' + (L.livePart >= 0 ? "Part " + (part + 1) + " · playing" : "Listening · introduction"));
+        L.header(L.livePart >= 0 ? "Part " + (part + 1) + " is playing" : "The test is starting", "Listen and answer as you go. The recording will not stop or repeat.", true);
+        var a = new Audio("audio/" + clip + ".mp3"); AUD.cur = a; a.volume = L.vol;
+        a.preservesPitch = a.mozPreservesPitch = a.webkitPreservesPitch = true; a.playbackRate = speed();
+        if (st.phone) phoneLine(a);
+        L.lastEvt = Date.now();
+        a.ontimeupdate = function () { L.lastEvt = Date.now(); };
+        a.onended = function () {
+          if (gen !== L.gen) return; L.lastEvt = Date.now();
+          var nx = L.steps[i + 1], gap = !nx || nx.k !== "say" ? 500 : (st.spk === "N" || nx.spk === "N") ? 700 : nx.spk === st.spk ? 250 : 380;
+          setTimeout(function () { if (gen === L.gen) L.run(i + 1); }, gap);
+        };
+        a.onerror = function () { if (gen !== L.gen) return; LA.names[i] = null; L.run(i); };
+        var pr = a.play(); if (pr && pr.catch) pr.catch(function () { if (gen === L.gen) { LA.names[i] = null; L.run(i); } });
+        return;
+      }
+      if (!synth) { L.run(i + 1); return; }
+      // browser voice for the lines we don't have a natural clip for
+      var j = i, batch = [];
+      while (L.steps[j] && L.steps[j].k === "say" && !(LA.names && LA.names[j] && j > i)) { batch.push(j); j++; }
       L.status('<span class="eq"><i></i><i></i><i></i><i></i></span>' + (L.livePart >= 0 ? "Part " + (part + 1) + " · playing" : "Listening · introduction"));
       L.header(L.livePart >= 0 ? "Part " + (part + 1) + " is playing" : "The test is starting", "Listen and answer as you go. The recording will not stop or repeat.", true);
       L.lastEvt = Date.now();
-      batch.forEach(function (idx, k) {
-        var st2 = L.steps[idx], u = utter(st2.spk, st2.t);
+      var pieces = [];
+      batch.forEach(function (idx) { chunks(L.steps[idx].t).forEach(function (c) { pieces.push([idx, c]); }); });
+      pieces.forEach(function (pc, k) {
+        var idx = pc[0], st2 = L.steps[idx], u = utter(st2.spk, pc[1]);
         u.onstart = function () { if (gen !== L.gen) return; L.lastEvt = Date.now(); L.i = idx; L.progress(); if (k % 4 === 0) lsSave(); };
-        u.onend = function () { if (gen !== L.gen) return; L.lastEvt = Date.now(); if (k === batch.length - 1) setTimeout(function () { if (gen === L.gen) L.run(j); }, 350); };
-        u.onerror = function (e) { if (gen !== L.gen || (e && e.error === "interrupted") || (e && e.error === "canceled")) return; L.lastEvt = Date.now(); if (k === batch.length - 1) L.run(j); };
+        u.onend = function () { if (gen !== L.gen) return; L.lastEvt = Date.now(); if (k === pieces.length - 1) setTimeout(function () { if (gen === L.gen) L.run(j); }, 350); };
+        u.onerror = function (e) { if (gen !== L.gen || (e && e.error === "interrupted") || (e && e.error === "canceled")) return; L.lastEvt = Date.now(); if (k === pieces.length - 1) L.run(j); };
         synth.speak(u);
       });
     },
@@ -1008,7 +1077,8 @@ var EXAMINER = (function () {
     watch: function () {
       if (!L.steps || L.finished) return;
       var st = L.steps[L.i]; if (!st || st.k !== "say") return;
-      if (Date.now() - L.lastEvt > 22000 || (!synth.speaking && !synth.pending && Date.now() - L.lastEvt > 4000)) L.run(L.i);
+      if (AUD.cur) { if (Date.now() - L.lastEvt > 15000) L.run(L.i); return; }
+      if (Date.now() - L.lastEvt > 22000 || (synth && !synth.speaking && !synth.pending && Date.now() - L.lastEvt > 4000)) L.run(L.i);
     },
     finish: function () {
       if (L.finished) return; L.finished = true; L.stop(); L.hideStatus();
@@ -1016,7 +1086,7 @@ var EXAMINER = (function () {
       if (last) submitAll(); else goSection(S.secIndex + 1);
     }
   };
-  $("volIn").addEventListener("input", function () { L.vol = +this.value; try { localStorage.setItem("zero1-vol", L.vol); } catch (e) {} });
+  $("volIn").addEventListener("input", function () { L.vol = +this.value; if (AUD.cur) AUD.cur.volume = L.vol; try { localStorage.setItem("zero1-vol", L.vol); } catch (e) {} });
   try { var vv = +localStorage.getItem("zero1-vol"); if (vv) { L.vol = vv; $("volIn").value = vv; } } catch (e) {}
 
   // ---------- speaking (recording) ----------
