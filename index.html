@@ -240,8 +240,8 @@
 // Shared by the test page (runs the exam) and voices.mjs (makes the audio files),
 // so both always use exactly the same words. Plain ES5 on purpose.
 var EXAMINER = (function () {
-  // our voices (Microsoft Azure neural, British): X = examiner, F / M = people in the recordings
-  var VOICES = { X: "en-GB-SoniaNeural", F: "en-GB-LibbyNeural", M: "en-GB-RyanNeural" };
+  // our voices (Microsoft Azure neural, British): X = examiner (Olivia; Sonia sounded croaky on short lines), F / M = people in the recordings
+  var VOICES = { X: "en-GB-OliviaNeural", F: "en-GB-LibbyNeural", M: "en-GB-RyanNeural" };
   var RATE = "-6%";           // A1: a little slower than normal speech
   var BEEP_PAUSE = 400;
 
