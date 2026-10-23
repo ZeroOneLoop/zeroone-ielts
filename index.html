@@ -83,7 +83,26 @@
   .chart-table table { border-collapse: collapse; width: 100%; font-size: 14px; }
   .chart-table th, .chart-table td { border: 1px solid #cfd6e4; padding: 7px 10px; text-align: center; }
   .chart-table thead th { background: #eef3fb; } .chart-table tbody th { text-align: left; font-weight: 600; background: #fafbfd; }
+  /* picture questions (A1): three photos with labels, tap one */
+  .pq .pics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 10px; }
+  .pq .pc { position: relative; display: flex; flex-direction: column; border: 2px solid #dfe5f0; border-radius: 12px; overflow: hidden; cursor: pointer; background: #fff; transition: border-color .15s, box-shadow .15s; }
+  .pq .pc input { position: absolute; opacity: 0; pointer-events: none; }
+  .pq .pc img { flex: 0 0 auto; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: #eef2f8; }
+  .pq .pc .pl { flex: 1 1 auto; display: flex; align-items: center; gap: 8px; padding: 9px 10px; background: #0B123C; color: #fff; font-weight: 700; font-size: 15px; line-height: 1.25; }
+  .pq .pc .pl b { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: #fff; color: #0B123C; display: grid; place-items: center; font-size: 14px; }
+  .pq .pc:hover { border-color: #9cc0ea; }
+  .pq .pc:has(input:checked) { border-color: #3372B9; box-shadow: 0 0 0 3px rgba(51,114,185,.25); }
+  .pq .pc:has(input:checked) .pl { background: #3372B9; }
+  .pq .pc:has(input:focus-visible) { outline: 3px solid #3372B9; outline-offset: 2px; }
+  @media (max-width: 560px) { .pq .pics { gap: 8px; } .pq .pc .pl { font-size: 13px; padding: 7px; gap: 6px; } .pq .pc .pl b { width: 22px; height: 22px; font-size: 12px; } }
+  .rpics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 8px 0; max-width: 520px; }
+  .rpics figure { margin: 0; border: 3px solid #e3e7ef; border-radius: 10px; overflow: hidden; position: relative; }
+  .rpics figure.ok { border-color: #1f9d5a; } .rpics figure.no { border-color: #d64545; }
+  .rpics img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
+  .rpics figcaption { font-size: 12px; font-weight: 700; padding: 4px 6px; background: #f4f6fa; }
+  .rpics figure.ok figcaption { background: #e3f6ec; color: #126b3c; } .rpics figure.no figcaption { background: #fde8e8; color: #9b1c1c; }
   .pic { margin: 0 0 12px; border: 1px solid #dfe5f0; border-radius: 12px; background: linear-gradient(180deg, #f3f8ff, #fff); padding: 14px; text-align: center; }
+  .pic.photo { padding: 0; overflow: hidden; } .pic-photo { display: block; width: 100%; max-width: 560px; margin: 0 auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; }
   .pic-scene { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 18px; font-size: 54px; line-height: 1.15; }
   .pic figcaption { margin-top: 8px; color: #66708a; font-size: 13px; }
   .navbar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--panel); border-top: 1px solid var(--border); padding: 8px 16px; display: none; z-index: 20; box-shadow: 0 -4px 16px rgba(11,18,60,.06); }
@@ -256,6 +275,7 @@ var EXAMINER = (function () {
     hello: x("Hello. I'm your examiner today. Please listen carefully, and answer after the beep. Let's begin."),
     listenAgain: x("Now listen again."),
     choose: x("Now choose your answers."),
+    chooseOne: x("Now choose your answer."),
     nextQ: x("Thank you."),
     end: x("Thank you. That is the end of the test. Goodbye.")
   };
@@ -279,15 +299,16 @@ var EXAMINER = (function () {
         var qs = (p.questions || []).map(function (q, qi) {
           return "Question " + (String(q.id || "").replace(/^[A-Za-z]+/, "") || qi + 1) + ". " + clean(q.prompt) + " " + (q.options || []).map(opt).join(" ");
         }).join(" ");
-        steps.push({ k: "say", part: pi, u: x(clean(p.title) + " " + (qs ? "Look at the questions. " + qs : "")) });
+        // picture parts: "Look at the pictures." (other parts keep their exact words, so their audio files stay the same)
+        steps.push({ k: "say", part: pi, u: x(clean(p.title) + " " + (qs ? (p.pictures ? "Look at the pictures. " : "Look at the questions. ") + qs : "")) });
         var plays = p.plays || 2;
         var rec = unit((p.script || []).map(function (l) { return [VOICES[l[0]] ? l[0] : "F", clean(l[1])]; }));
         for (var n = 0; n < plays; n++) {
           if (n > 0) steps.push({ k: "say", part: pi, u: COMMON.listenAgain });
           steps.push({ k: "play", part: pi, id: p.id, u: rec });
         }
-        steps.push({ k: "say", part: pi, u: COMMON.choose });
-        steps.push({ k: "answer", part: pi, secs: Math.max(20, (p.questions || []).length * 10) });
+        steps.push({ k: "say", part: pi, u: p.pictures ? COMMON.chooseOne : COMMON.choose });
+        steps.push({ k: "answer", part: pi, secs: p.pictures ? 12 : Math.max(20, (p.questions || []).length * 10) });
       });
     }
     return steps;
@@ -613,9 +634,19 @@ var EXAMINER = (function () {
   function flagBtn(id) { return '<button type="button" class="flagbtn' + (S.flags[id] ? " on" : "") + '" data-flag="' + id + '" title="Flag this question to check later" aria-label="Flag question">⚑</button>'; }
 
   // ----- classic question markup (reading, short listening) -----
+  // "A  At a bus stop" -> { l: "A", t: "At a bus stop" }
+  function optParts(o) { var m = String(o).match(/^\s*([A-D])[\s.)]+(.*)$/); return m ? { l: m[1], t: m[2].trim() } : { l: String(o).trim().charAt(0), t: String(o) }; }
+  function picsHTML(q, v) {
+    return '<div class="pics" role="radiogroup" aria-label="' + esc(q.prompt) + '">' + (q.options || []).map(function (o, i) {
+      var p = optParts(o);
+      return '<label class="pc"><input type="radio" name="' + q.id + '" value="' + esc(p.l) + '" data-ans="' + q.id + '"' + (v === p.l ? " checked" : "") + '>' +
+        '<img src="' + esc(q.pics[i]) + '" alt="' + esc(p.t) + '" loading="eager" decoding="async"><span class="pl"><b>' + esc(p.l) + '</b>' + esc(p.t) + '</span></label>';
+    }).join("") + '</div>';
+  }
   function qHTML(q, n) {
     var v = S.answers[q.id] || "";
     var head = '<div><span class="qn">' + esc(n) + '</span>' + esc(q.prompt) + '</div>';
+    if (q.pics && q.pics.length) return '<div class="q pq" id="q-' + q.id + '">' + head + picsHTML(q, v) + flagBtn(q.id) + '</div>';
     if (q.type === "gap") return '<div class="q" id="q-' + q.id + '">' + head + '<input type="text" autocomplete="off" spellcheck="false" data-ans="' + q.id + '" value="' + esc(v) + '">' + flagBtn(q.id) + '</div>';
     var inline = q.type === "tfng";
     var opts = (q.options || []).map(function (o) {
@@ -823,13 +854,19 @@ var EXAMINER = (function () {
         '<textarea data-ans="' + t.id + '" data-min="' + t.minWords + '" spellcheck="false" placeholder="Write your answer here…">' + esc(v) + '</textarea><div class="wc" id="wc-' + t.id + '"></div></div>';
     }).join("");
   }
+  // a speaking picture: a real photo (newer tests) or the older emoji scene
+  function picFig(pic) {
+    var body = pic.photo ? '<img class="pic-photo" src="' + esc(pic.photo) + '" alt="' + esc(pic.caption) + '" decoding="async">'
+      : '<div class="pic-scene">' + (pic.emojis || []).map(function (e) { return '<span>' + esc(e) + '</span>'; }).join("") + '</div>';
+    return '<figure class="pic' + (pic.photo ? " photo" : "") + '">' + body + '<figcaption>' + esc(pic.caption) + '</figcaption></figure>';
+  }
   function renderSpeaking(sec) {
     return sec.parts.map(function (p) {
       return '<div class="card"><h2>' + esc(p.title) + '</h2>' +
         (p.prepSeconds ? '<p class="dim">You have ' + p.prepSeconds + ' seconds to prepare. Press "Start preparation", make notes if you like, then recording starts automatically.</p>' : "") +
         p.prompts.map(function (pr) {
           var done = S.audioDone[pr.id];
-          return '<div class="speak" id="sp-' + pr.id + '">' + (pr.picture ? '<figure class="pic"><div class="pic-scene">' + pr.picture.emojis.map(function (e) { return '<span>' + esc(e) + '</span>'; }).join("") + '</div><figcaption>' + esc(pr.picture.caption) + '</figcaption></figure>' : "") + '<div class="ptext">' + esc(pr.text) + '</div>' +
+          return '<div class="speak" id="sp-' + pr.id + '">' + (pr.picture ? picFig(pr.picture) : "") + '<div class="ptext">' + esc(pr.text) + '</div>' +
             '<div class="recbar"><button class="btn" data-rec="' + pr.id + '" data-sec="' + pr.seconds + '"' + (p.prepSeconds ? ' data-prep="' + p.prepSeconds + '"' : "") + '>' +
             (done ? "🎙 Record again" : (p.prepSeconds ? "⏳ Start preparation" : "🎙 Record answer")) + '</button>' +
             '<span class="dim">Up to ' + Math.round(pr.seconds / 60 * 10) / 10 + ' min</span><span id="st-' + pr.id + '">' + (done ? '<span class="pill ok">Saved ✓</span>' : "") + '</span></div></div>';
@@ -1207,7 +1244,7 @@ var EXAMINER = (function () {
       return '<div class="card"><h2>' + esc(p.title) + '</h2>' + p.prompts.map(function (pr, k) {
         var done = S.audioDone[pr.id];
         return '<div class="speak xq' + (done ? " done" : "") + '" id="sp-' + pr.id + '">' +
-          (pr.picture ? '<figure class="pic"><div class="pic-scene">' + pr.picture.emojis.map(function (e) { return '<span>' + esc(e) + '</span>'; }).join("") + '</div><figcaption>' + esc(pr.picture.caption) + '</figcaption></figure>' : "") +
+          (pr.picture ? picFig(pr.picture) : "") +
           '<div class="xq-h"><b>Question ' + (k + 1) + '</b><span class="xq-tools">' +
             (open ? "" : '<button type="button" class="btn ghost sm" data-show="' + pr.id + '">👁 Show the words</button>') +
             '<button type="button" class="btn ghost sm" data-again="' + pr.id + '" disabled>🔁 Repeat the question</button></span></div>' +
@@ -1416,10 +1453,13 @@ var EXAMINER = (function () {
     RV.forEach(function (x, i) { x.part = 0; x.only = false; x.answers = r.answers || {}; drawReview(i); });
   }
   function keyOf(q) { var a = q.answer || []; return q.type === "multi" ? a.join(" & ") : (a[0] || ""); }
+  // questions added to a test after this attempt was made are left out of its review
+  function inAttempt(q, items) { var k = Object.keys(items || {}); return !k.length || Object.prototype.hasOwnProperty.call(items, q.id); }
   function answerSheet(sec, items, ans) {
     var out = '<div class="agrid">';
     sec.parts.forEach(function (p) {
-      var qs = p.questions;
+      var qs = p.questions.filter(function (q) { return inAttempt(q, items); });
+      if (!qs.length) return;
       out += '<div class="ph">' + esc(p.title) + ': Questions ' + qNum(qs[0]) + '–' + qNum(qs[qs.length - 1]) + '</div>';
       qs.forEach(function (q) {
         var ok = items[q.id] === true, g = ans[q.id];
@@ -1471,13 +1511,15 @@ var EXAMINER = (function () {
     var x = RV[i], sec = x.sec, box = main.querySelector('[data-rvw="' + i + '"]'); if (!box) return;
     var p = sec.parts[x.part], lines = partLines(sec, p), marks = [];
     p.questions.forEach(function (q) { var ev = evidenceOf(q, lines); if (ev) marks.push({ key: sec.type + "-" + q.id, n: qNum(q), ev: ev }); });
-    var tabs = sec.parts.map(function (pp, k) { return '<button data-pt="' + k + '" class="' + (k === x.part ? "on" : "") + '">' + esc(pp.title) + '</button>'; }).join("");
-    var cards = p.questions.filter(function (q) { return !x.only || x.items[q.id] !== true; }).map(function (q) {
+    var tabs = sec.parts.map(function (pp, k) { if (!pp.questions.some(function (q) { return inAttempt(q, x.items); })) return ""; return '<button data-pt="' + k + '" class="' + (k === x.part ? "on" : "") + '">' + esc(pp.title) + '</button>'; }).join("");
+    var cards = p.questions.filter(function (q) { return inAttempt(q, x.items) && (!x.only || x.items[q.id] !== true); }).map(function (q) {
       var ok = x.items[q.id] === true, g = x.answers[q.id], key = sec.type + "-" + q.id;
       var notes = RCM.filter(function (c) { return c.task === q.id; });
       var hasEv = marks.some(function (m) { return m.key === key; });
       return '<div class="xc ' + (ok ? "ok" : "no") + '"><div class="xq1"><b>' + qNum(q) + '.</b> ' + esc(q.prompt) + '</div>' +
         '<div class="xa">Your answer: <b class="' + (ok ? "g" : "c") + '">' + (g ? esc(g) : "—") + '</b> ' + (ok ? "✓" : '· Correct answer: <b class="g">' + esc(keyOf(q)) + '</b>') + '</div>' +
+        (q.pics && q.pics.length ? '<div class="rpics">' + (q.options || []).map(function (o, k) { var pp = optParts(o), right = keyOf(q) === pp.l, mine = g === pp.l;
+          return '<figure class="' + (right ? "ok" : mine ? "no" : "") + '"><img src="' + esc(q.pics[k]) + '" alt="' + esc(pp.t) + '" loading="lazy"><figcaption>' + esc(pp.l) + ' · ' + esc(pp.t) + (right ? " ✓" : mine ? " ✗" : "") + '</figcaption></figure>'; }).join("") + '</div>' : '') +
         (q.explain ? '<div class="xe">💡 ' + esc(q.explain) + '</div>' : '') +
         notes.map(function (c) { return '<div class="tn"><b>Your trainer:</b> ' + esc(c.note) + '</div>'; }).join("") +
         (hasEv ? '<div class="xbtn"><button data-loc="' + key + '">📍 Locate</button>' + (sec.type === "listening" ? '<button data-lis="' + key + '">🎧 Listen from here</button>' : '') + '</div>' : '') + '</div>';
